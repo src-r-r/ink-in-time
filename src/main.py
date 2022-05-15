@@ -1,62 +1,37 @@
-# coding:utf-8
+from flask import Flask, request
+from .config import config
+from .checker import check_config
+import logging.config
+import logging
 
-import os
-import sys
-from empty import Empty
-from mixins import HttpMixin
+log = logging.getLogger(__name__)
+app = Flask(__name__)
 
-try:
-    import __builtin__
-except ImportError:
-    import builtins as __builtin__
-
-# allows you to copy json snippets directly into python
-__builtin__.true = True
-__builtin__.false = False
-__builtin__.null = None
-
-
-# define base classes for our App class
-base_cls_list = [Empty]
-base_cls_list = [HttpMixin] + base_cls_list
+STEPS = [
+    "/",
+    "/<string:block>",
+    "/<string:block>/<int:year>",
+    "/<string:block>/<int:year>/<int:month>",
+    "/<string:block>/<int:year>/<int:month>/<int:day>",
+]
+GET = "GET"
 
 
-# apps is a special folder where you can place your blueprints
-PROJECT_PATH = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(PROJECT_PATH, "apps"))
-
-basestring = getattr(__builtins__, 'basestring', str)
-
-
-# dynamically create our class
-App = type('App', tuple(base_cls_list), {})
+@app.route(STEPS[0], methods=[GET])
+@app.route(STEPS[1], methods=[GET])
+@app.route(STEPS[2], methods=[GET])
+@app.route(STEPS[3], methods=[GET])
+@app.route(STEPS[4], methods=[GET])
+def show_form(block, year=None, month=None, day=None):
+    pass
 
 
-def config_str_to_obj(cfg):
-    if isinstance(cfg, basestring):
-        module = __import__('config', fromlist=[cfg])
-        return getattr(module, cfg)
-    return cfg
+@app.route(STEPS[4], methods=[GET])
+def submit_complete(block, year=None, month=None, day=None):
+    request.form
 
 
-def app_factory(config, app_name, blueprints=None):
-    from commands import new_app, test_cmd
-
-    # you can use Empty directly if you wish
-    app = App(app_name, template_folder=os.path.join(PROJECT_PATH, 'templates'))
-    config = config_str_to_obj(config)
-
-    app.cli.add_command(new_app)
-    app.cli.add_command(test_cmd)
-
-    app.configure(config)
-    app.add_blueprint_list(blueprints or config.BLUEPRINTS)
-    app.setup()
-
-    return app
-
-
-def heroku():
-    from config import Config, project_name
-    # setup app through APP_CONFIG envvar
-    return app_factory(Config, project_name)
+if __name__ == "__main__":
+    check_config()
+    logging.config.dictConfig(config["logging"])
+    # app.run(debug=True)

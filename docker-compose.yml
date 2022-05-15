@@ -1,5 +1,19 @@
 services:
-  flask:
+  
+  smtpdebug:
     image: python:latest
-    build:
-      dockerfile: ./docker/Dockerfile
+    entrypoint: /start.sh
+    ports:
+      - 1025:1025
+    environment:
+      - SMTP_PORT=1025
+    volumes:
+      - ./docker/smtpdebug/start.sh:/start.sh
+  # flask:
+  #   image: python:latest
+  #   depends_on:
+  #     - smtpdebug
+  #   build:
+  #     dockerfile: ./docker/Dockerfile
+  #   volumes:
+  #     - ./src/:/app/src

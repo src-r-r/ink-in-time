@@ -2,3 +2,5 @@ venv
 __pycache__
 .mypy_cache
 .vscode
+config/mmf.yml
+config/iit.yml
