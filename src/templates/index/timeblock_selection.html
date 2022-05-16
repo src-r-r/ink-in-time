@@ -1,67 +1,95 @@
 {% extends "index/base.html" %}
 {% block site_title %}Ink-In Time{% endblock %}
-{% block title %}Choose A Time to Meet{% endblock %}
+{% block title %}
+{% if day %}
+You're Almost Ready to Schedule the Meeting!
+{% elif month %}
+Select a Day of the Month
+{% elif year %}
+Select a Month
+{% elif block %}
+Select a Year
+{% else %}
+Choose a Length of the Meeting
+{% endif %}
+{% endblock %}
 
 {% block main %}
-
 <div class="container">
-    {% if meta and meta.back %}
-    <a href="{{ meta.back.url }}">{{ meta.back.label }}</a>
-    {% endif %}
-    {% include "inc/selection/timezone.html" %}
+    <div class="container-fluid">
+        <div class="row container">
+            <div class="col">
+                {% if meta and meta.back %}
+                <a href="{{ meta.back.url }}" class="btn btn-primary"> &lt;- {{ meta.back.label }}</a>
+                {% endif %}
+            </div>
+            <div class="col">
+                {% include "inc/selection/timezone.html" %}
+            </div>
+        </div>
+    </div>
 
+    {% if day %}
+    <div class="container alert alert-info">
+        Please add your email and any additonal info.
+    </div>
+    {% endif %}
+
+    <p>
+    {% if block %}
+    <span class="badge bg-secondary">{{ block }} Meeting</span>
+    {% endif %}
+    {% if year %}
+    <span class="badge bg-secondary">{{ year }}</span> /
+    {% endif %}
+    {% if month %}
+    <span class="badge bg-secondary">{{ month_name }}</span> /
+    {% endif %}
+    {% if day %}
+    <span class="badge bg-secondary">{{ day }}</span>
+    {% endif %}
+
+    </p>
+
+    {% if not day %}
     <div class="section-container">
-        <code>{{ choices }}</code>
-        {% if block %}
-        {{ block.label }}
-        {% else %}
-        {% for block in choices %}
-        <a href="/{{ block.value }}/" class="btn btn-lg btn-outline-primary">
-            <p class="lg">{{ block.label }}</p>
-            <p class="text-lg">{{ block.time }} min</p>
+        {% for item in choices %}
+        <a href="{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}" class="btn btn-lg btn-outline-primary">
+            <p class="lg">{{ item.label }}</p>
         </a>
         {% endfor %}
-        {% endif %}
     </div>
-
-    <div class="selection-container">
-        {% if year %}
-        <p>{{ year }}</p>
-        {% else %}
-        {% include "inc/selection/year.html" %}
-        {% endif %}
-    </div>
-
-    <div class="selection-container">
-        {% if month %}
-        <div class="">{{ month }}</div>
-        {% else %}
-        {% include "inc/selection/day.html" %}
-        {% endif %}
-    </div>
-
-    <div class="selection-container">
-        {% if day %}
-        <div class="">{{ day }}</div>
-        {% elif year %}
-        {% include "inc/selection/day.html" %}
-        {% endif %}
-    </div>
-
-    <div class="selection-container">
-        {% if day %}
-        <div class="">{{ day }}</div>
-        {% elif month %}
-        {% include "inc/selection/day.html" %}
-        {% endif %}
-    </div>
-    <div class="selection-container">
-        {% if day %}
-        <div class="">{{ day }}</div>
-        {% elif month %}
-        {% include "inc/selection/day.html" %}
-        {% endif %}
-    </div>
+    {% else %}
+    <form class="form">
+        <div class="section-container">
+            <select class="form-select">
+            {% for item in choices %}
+                <option value="{{item.value.for_select}}">
+                    {{ item.value.human.start }}
+                    -
+                    {{ item.value.human.end }}
+                    ({{ item.value.human.duration}})
+                </option>
+            {% endfor %}
+            </select>
+            <div class="form required">
+                <label for="email">Email</label>
+                <input type="email"
+                        class="form-control"
+                        name="email"
+                        placeholder="Required - user@example.com"
+                        />
+            </div>
+            <div>
+                <label for="notes">Any Notes for the Meeting?</label>
+                <textarea name="notes" type="text" class="form-control"></textarea>
+            </div>
+            <div class="container button-group p-4">
+                <input type="submit" value="Schedule" class="btn btn-large btn-primary align-right"/>
+            </div>
+        </div>
+    </form>
+    {% endif %}
 </div>
 
 {% endblock %}

@@ -1,0 +1,37 @@
+<div class="row">
+  <div class="col-auto">
+    <label for="exampleDataList" class="form-label">Timezone:</label>
+  </div>
+  <div class="col-auto">
+    <div class="dropdown">
+      <a
+        class="btn btn-secondary dropdown-toggle"
+        href="#"
+        role="button"
+        id="dropdownMenuLink"
+        data-bs-toggle="dropdown"
+        aria-expanded="true"
+      >
+        {% if timezone %}{{ timezone.label }}{% else %}Select Timezone{% endif
+        %}
+      </a>
+      <div class="iit-dropdown dropdown-menu">
+        <div class="mb-3">
+          <input type="text" id="timezone-filter" class="form-control" />
+        </div>
+        <ul>
+          {% for tz in timezones %}
+          <li>
+            <a
+              href="{{ request.path }}?timezone={{ tz.value }}"
+              iit-data-value="{{ tz.value }}"
+            >
+              {{ tz.label }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

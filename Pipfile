@@ -29,6 +29,9 @@ ipdb = "*"
 requests = "*"
 pytz = "*"
 humanize = "*"
+orderedattrdict = "*"
+pytest-flask = "*"
+arrow = "*"
 
 [dev-packages]
 

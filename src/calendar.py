@@ -1,10 +1,12 @@
 import typing as T
-from .config import config, get_tz
+from .config import config
 import vobject
 import requests
 import logging
 import pytz
 import humanize as hu
+import arrow
+from .timespan import TimeSpan
 import re
 from cachetools import cached, LRUCache, TTLCache
 from collections import namedtuple
@@ -26,8 +28,8 @@ class Event:
         if not end or sequence_event:
             raise RuntimeError("`end` or `sequence_event` required")
         self.calendar = calendar
-        self._start = start
-        self._end = end
+        self._start = arrow.get(start)
+        self._end = arrow.get(end)
         self.sequence_event = sequence_event
 
     @property
@@ -57,11 +59,11 @@ class Event:
             return None
         return self.calendar.events[k]
 
-    def does_conflict(self, ambi_dt_start, ambi_dt_end):
-        a1 = awareness(ambi_dt_start)
-        a2 = awareness(ambi_dt_end)
-        e1 = mkdt(self.start)
-        e2 = mkdt(self.end)
+    def does_conflict(self, a_start, a_end):
+        a1 = a_start
+        a2 = a_end
+        e1 = self.start
+        e2 = self.end
         assert e1.tzinfo
         assert e2.tzinfo
         assert a1.tzinfo
@@ -115,6 +117,7 @@ class Calendar:
         # Assign the event to the start time.
         if start not in self.events:
             self.events[start] = []
+        
         self.events[start].append(Event(self, start, end, sequence_event))
 
     def iter_all_events(self) -> T.Iterable[Event]:
@@ -123,10 +126,10 @@ class Calendar:
         for e in events:
             yield e[1]
 
-    def does_conflict(self, ambi_dt_start, ambi_dt_end):
+    def does_conflict(self, a_start, a_end):
         for eventset in self.iter_all_events():
             for event in eventset:
-                if event.does_conflict(ambi_dt_start, ambi_dt_end):
+                if event.does_conflict(a_start, a_end):
                     return True
         return False
 
@@ -144,11 +147,9 @@ class CalendarCollection:
     def add_calendar(self, caltype, calendar):
         self.cals[caltype].append(calendar)
 
-    def does_conflict(self, ambi_dt_start, ambi_dt_end):
-        aware_dt_start = awareness(ambi_dt_start)
-        aware_dt_end = awareness(ambi_dt_end)
+    def does_conflict(self, a_start, a_end):
         for cal in self.cals["blocked"]:
-            if cal.does_conflict(aware_dt_start, aware_dt_end):
+            if cal.does_conflict(a_start, a_end):
                 return True
         return False
 
@@ -162,11 +163,13 @@ def fetch_vobject(url) -> vobject.iCalendar:
         yield event
 
 
-def event_to_timeblock(event):
+def vevent_to_timeblock(event):
     if "dtend" not in event:
         log.warning("Event missing dtend: %s", event)
         return None
-    return TimeBlock(begin=event["dtstart"][0].value, end=event["dtend"][0].value)
+    begin = arrow.get(event["dtstart"][0].value)
+    end = arrow.get(event["dtend"][0].value)
+    return TimeBlock(begin=begin, end=end)
 
 
 def get_events_from_vcal(vcal):
@@ -180,17 +183,18 @@ def get_tz_from_vcal(vcal) -> pytz.timezone:
 
 
 def construct_collection():
-    calendars = config["calendars"]
-    free = config["calendars"].get("free")
-    blocked = config["calendars"].get("blocked")
+    cfg_cals = {
+        "free": config.free_calendars,
+        "blocked": config.blocked_calendars,
+    }
     collection = CalendarCollection()
     for caltype in ("free", "blocked"):
-        for cal in config["calendars"].get(caltype, []) or []:
+        for cal in cfg_cals.get(caltype, []) or []:
             for vcal in fetch_vobject(cal):
                 tz = get_tz_from_vcal(vcal)
                 calendar = Calendar(tz)
                 for event in get_events_from_vcal(vcal):
-                    ev = event_to_timeblock(event)
+                    ev = vevent_to_timeblock(event)
                     if not ev:
                         continue
                     calendar.add_event(event)
@@ -199,73 +203,50 @@ def construct_collection():
 
 
 def top_of_hour(when: datetime):
-    n = when + timedelta(hours=1)
-    return datetime(year=n.year, month=n.month, day=n.day, hour=n.hour)
+    return when.replace(hour=when.hour+1, minute=0)
 
 
-def awareness(unaware: T.Union[datetime, time]) -> T.Union[datetime, time]:
+def awareness(unaware: T.Union[datetime, time], tz=config.my_timezone) -> T.Union[datetime, time]:
     if unaware.tzinfo:
         return unaware
-    return get_tz().localize(unaware)
-
+    return tz.localize(unaware)
 
 def does_conflict(
-    calcol: CalendarCollection, ambi_dt_start: datetime, ambi_dt_end: datetime
+    calcol: CalendarCollection, a_start: arrow.Arrow, a_end : arrow.Arrow
 ):
-    aware_dt_start, aware_dt_end = (awareness(ambi_dt_start), awareness(ambi_dt_end))
-    end_workday = time(**config["workday"]["end"])
-    start_workday = time(**config["workday"]["end"])
-    if ambi_dt_end.time() > end_workday:
+    # Make sure both arrow tzs are aligned.
+    a_start = a_start.to(a_end.tzinfo)
+
+    # Align them both to my_timezone
+    a_start = a_start.to(config.my_timezone)
+    a_end = a_end.to(config.my_timezone)
+
+    swd = config.start_workday
+    ewd = config.end_workday
+    
+    # run the comparisons
+    # To the workweek
+    if a_end.time() >= ewd:
         return True
-    if ambi_dt_start.time() < start_workday:
+    if a_start.time() <= swd:
         return True
-    if calcol.does_conflict(aware_dt_start, aware_dt_end):
+    
+    # check the conflicts with the calendars
+    if calcol.does_conflict(a_start, a_end):
         return True
     return False
 
 
-class TimeSpan:
-    def __init__(self, start: datetime, end: datetime):
-        self.start = start
-        self.end = end
-
-    @property
-    def duration(self):
-        return self.end - self.start
-
-    def to_json(self):
-        return {
-            "start": {
-                "hour": self.start.hour,
-                "minute": self.start.minute,
-            },
-            "end": {
-                "hour": self.end.hour,
-                "minute": self.minute.minute,
-            },
-            "duration_in_secs": self.duration.total_seconds(),
-        }
-
-    def __str__(self):
-        s = self.start.strftime("%Y/%m/%d %H:%M")
-        e = self.end.strftime("%Y/%m/%d %H:%M")
-        d = hu.precisedelta(self.duration)
-        return f"{s} -> {e} ({d})"
-
-    def __repr__(self):
-        return f"<TimeSpan (start={self.start}, end={self.end}, [duration={self.duration}])>"
-
 
 def fetch_calblocks(
-    duration: timedelta, inittime=datetime.now(get_tz())
+    duration: timedelta, inittime=arrow.now(tz=str(config.my_timezone))
 ) -> T.Iterable[TimeSpan]:
-    inittime = awareness(inittime)
-    grace = timedelta(**config["grace_period"])
+    grace = config.grace_period
     starttime = top_of_hour(inittime) + grace
     a1 = starttime
     collection = construct_collection()
-    endspan = timedelta(**config["time_span"])
-    endsequence = starttime + endspan
+    endspan = config.get_end_view_dt(inittime)
+    endsequence = starttime + config.view_duration
     # Now go through each of the `duration` blocks starting at inittime
     while a1 + duration < endsequence:
         a2 = a1 + duration
@@ -281,7 +262,7 @@ def calblock_choices(
     year=None,
     month=None,
     day=None,
-    inittime=datetime.now(get_tz()),
+    inittime=datetime.now(config.my_timezone),
 ) -> T.Iterable[TimeSpan]:
     """Automagically returns the next choice in the chain given the input.
 
@@ -304,7 +285,7 @@ def calblock_choices(
     Yields:
         Iterator[T.Iterable[TimeSpan]]: _description_
     """
-    for ts in fetch_calblocks(duration, inittime):
+    for ts in fetch_calblocks(duration, inittime=inittime):
         ts: TimeSpan
         if year and ts.start.year == year:
             yield ts.start.month

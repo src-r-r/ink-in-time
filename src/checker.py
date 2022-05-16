@@ -1,38 +1,33 @@
-from .config import config
 import re
 import socket
 import pytz
 from datetime import timedelta, time
 
-def check_config():
-    assert "grace_period" in config
-    assert timedelta(**config["grace_period"])
-    assert "time_span" in config
-    assert timedelta(**config["time_span"])
+def check_config(config):
+    assert "scheduling" in config
+    assert "my_timezone" in config["scheduling"]
+    assert config["scheduling"]["my_timezone"] in pytz.all_timezones
+    assert "appointments" in config["scheduling"]
+    assert "grace_period" in config["scheduling"]
+    assert timedelta(**config["scheduling"]["grace_period"])
+    assert "workday" in config["scheduling"]
+    assert "start" in config["scheduling"]["workday"]
+    assert "end" in config["scheduling"]["workday"]
+    assert time(**config["scheduling"]["workday"]["start"])
+    assert time(**config["scheduling"]["workday"]["end"])
+    assert "view_duration" in config["scheduling"]
+    assert timedelta(**config["scheduling"]["view_duration"])
     assert "database" in config
-    assert "workday" in config
-    assert "start" in config["workday"]
-    assert time(**config["workday"]["start"])
-    assert "end" in config["workday"]
-    assert time(**config["workday"]["end"])
-    assert "timezone" in config
-    assert pytz.timezone(config["timezone"])
+    assert "path" in config["database"]
+    assert "compilation_interval" in config["database"]
+    assert timedelta(**config["database"]["compilation_interval"])
     assert "calendars" in config
-    for k in config["calendars"].keys():
-        assert k in ("free", "blocked")
-    assert "appointments" in config
-    for (k, v) in config["appointments"].items():
-        if "time" not in v:
-            raise RuntimeError(f"Missing time for {k} appointment")
-        if not (isinstance(v["time"], int) or re.match(r"^\d+$", time)):
-            raise RuntimeError(f"appointments[{k}] (value={time}) is not a valid time")
     assert "email" in config
-    assert "host" in config["email"]
-    assert "port" in config["email"]
-    assert "username" in config["email"]
-    assert "password" in config["email"]
+    assert "outbound" in config["email"]
+
+    e = config["email"]["outbound"]
     print("Testing email connection:")
     s = socket.socket()
-    s.connect((config["email"]["host"], config["email"]["port"]))
+    s.connect((e["host"], e["port"]))
     print("[SUCCESS]")
     s.close()
