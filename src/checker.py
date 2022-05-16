@@ -4,12 +4,12 @@ import socket
 import pytz
 from datetime import timedelta, time
 
-
 def check_config():
     assert "grace_period" in config
     assert timedelta(**config["grace_period"])
     assert "time_span" in config
     assert timedelta(**config["time_span"])
+    assert "database" in config
     assert "workday" in config
     assert "start" in config["workday"]
     assert time(**config["workday"]["start"])

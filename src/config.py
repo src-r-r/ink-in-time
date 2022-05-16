@@ -60,3 +60,15 @@ def get_appts(id: T.AnyStr = None):
     if id:
         return appts.get(id, None)
     return appts
+
+def get_db_path():
+    """ Gets the full path to the database,
+    resolving any substitutions, and creating
+    intermediate directories.
+    """
+    cnfpath = config["database"]
+    if "{proj_dir}" in cnfpath:
+        cnfpath = cnfpath.format(proj_dir=PROJ_DIR)
+    dbpath = Path(cnfpath).resolve()
+    dbpath.parent.mkdir(exist_ok=True, parents=True)
+    return dbpath

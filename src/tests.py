@@ -1,5 +1,6 @@
 from .calendar import fetch_calblocks, top_of_hour
 from .config import config, get_tz, get_start_workday, get_end_workday, get_end_view
+from .tasks import compile_choices, get_db, fetch_choices
 from datetime import datetime, timedelta
 import pytz
 import logging
@@ -32,3 +33,31 @@ def test_fetch_calendars():
         assert c.duration == duration
         assert c.start.time() > starttime
         assert c.end.time() < endtime
+
+
+def test_compile_choices():
+    compile_choices()
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT COUNT(*) FROM choices;")
+    assert cur.fetchone()[0] > 0
+    
+def test_fetch_choices():
+    now = datetime.now()
+    year = now.year
+    month = now.month
+
+    log.info("Fetching 60 minute blocks:")
+    result = list(fetch_choices("60min"))
+    a = len(result)
+    assert a > 0
+
+    log.info("Fetching 60 minute blocks in %d", year)
+    result = list(fetch_choices("60min", year))
+    b = len(result)
+    assert 0 < a >= b
+
+    log.info("Fetching 60 minute blocks in %d/%d", year, month)
+    result = list(fetch_choices("60min", year, month))
+    c = len(result)
+    assert 0 < a >= b >= c

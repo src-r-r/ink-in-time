@@ -1,9 +1,9 @@
 from flask import Flask, request, render_template, abort
-from .config import config, get_appts
+from .config import config, get_appts, get_tz
 from .checker import check_config
 from urllib.parse import parse_qs, parse_qsl
 from .calendar import calblock_choices
-from datetime import timedelta
+from datetime import timedelta, datetime
 import jinja2
 import logging.config
 import logging
@@ -48,7 +48,14 @@ def show_appointment_scheduler(block=None, year=None, month=None, day=None):
         # or check it
         if block not in appts:
             abort(Response(f"Block {block} not found"))
-
+    
+    # TODO
+    # Just for now we'll operate on the next two years
+    # and months since it takes a while to load ALL the data.
+    now = datetime.now()
+    now = get_tz().localize(now)
+    now_year = now.year
+    now_month = now.month
 
     appt = appts[block]
     duration = timedelta(minutes=appt["time"])
