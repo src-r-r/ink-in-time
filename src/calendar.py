@@ -235,9 +235,15 @@ class TimeSpan:
 
     def to_json(self):
         return {
-            start: self.start,
-            end: self.end,
-            duration_in_secs: self.duration.total_seconds(),
+            "start": {
+                "hour": self.start.hour,
+                "minute": self.start.minute,
+            },
+            "end": {
+                "hour": self.end.hour,
+                "minute": self.minute.minute,
+            },
+            "duration_in_secs": self.duration.total_seconds(),
         }
 
     def __str__(self):
@@ -250,7 +256,9 @@ class TimeSpan:
         return f"<TimeSpan (start={self.start}, end={self.end}, [duration={self.duration}])>"
 
 
-def fetch_calblocks(duration: timedelta, inittime=datetime.now(get_tz())):
+def fetch_calblocks(
+    duration: timedelta, inittime=datetime.now(get_tz())
+) -> T.Iterable[TimeSpan]:
     inittime = awareness(inittime)
     grace = timedelta(**config["grace_period"])
     starttime = top_of_hour(inittime) + grace
@@ -265,3 +273,44 @@ def fetch_calblocks(duration: timedelta, inittime=datetime.now(get_tz())):
         if not does_conflict(collection, a1, a2):
             yield TimeSpan(a1, a2)
         a1 = a2
+
+
+@cached(LRUCache(1024))
+def calblock_choices(
+    duration: timedelta,
+    year=None,
+    month=None,
+    day=None,
+    inittime=datetime.now(get_tz()),
+) -> T.Iterable[TimeSpan]:
+    """Automagically returns the next choice in the chain given the input.
+
+    TODO: Somhow this seems wrong; might need improvment
+
+    Args:
+        duration (timedelta): The duration of the appointment
+        year (int, optional): Chosen year. Defaults to None.
+        month (int, optional): Chosen month. Defaults to None.
+        day (int, optional): Chosen day. Defaults to None.
+        inittime (tz-aware datetime, optional): Initial time. Defaults to datetime.now(get_tz()).
+
+    Returns:
+        T.Iterable[T.Any]: depending...
+            - list of years if nothing is selected
+            - list of months if year is selected
+            - list of days if month is selected
+            - list of timespans (as json) if day is selected
+
+    Yields:
+        Iterator[T.Iterable[TimeSpan]]: _description_
+    """
+    for ts in fetch_calblocks(duration, inittime):
+        ts: TimeSpan
+        if year and ts.start.year == year:
+            yield ts.start.month
+        elif month and ts.start.month == month:
+            yield ts.start.day
+        elif day and ts.start.day == day:
+            yield ts
+        elif not year:
+            yield ts.to_json()

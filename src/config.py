@@ -53,3 +53,10 @@ def get_end_view(when=datetime.now()):
     if not when.tzinfo:
         when = tz.localize(when)
     return when + get_grace_period()
+
+
+def get_appts(id: T.AnyStr = None):
+    appts = config["appointments"]
+    if id:
+        return appts.get(id, None)
+    return appts

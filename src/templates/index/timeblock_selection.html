@@ -1,0 +1,67 @@
+{% extends "index/base.html" %}
+{% block site_title %}Ink-In Time{% endblock %}
+{% block title %}Choose A Time to Meet{% endblock %}
+
+{% block main %}
+
+<div class="container">
+    {% if meta and meta.back %}
+    <a href="{{ meta.back.url }}">{{ meta.back.label }}</a>
+    {% endif %}
+    {% include "inc/selection/timezone.html" %}
+
+    <div class="section-container">
+        <code>{{ choices }}</code>
+        {% if block %}
+        {{ block.label }}
+        {% else %}
+        {% for block in choices %}
+        <a href="/{{ block.value }}/" class="btn btn-lg btn-outline-primary">
+            <p class="lg">{{ block.label }}</p>
+            <p class="text-lg">{{ block.time }} min</p>
+        </a>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="selection-container">
+        {% if year %}
+        <p>{{ year }}</p>
+        {% else %}
+        {% include "inc/selection/year.html" %}
+        {% endif %}
+    </div>
+
+    <div class="selection-container">
+        {% if month %}
+        <div class="">{{ month }}</div>
+        {% else %}
+        {% include "inc/selection/day.html" %}
+        {% endif %}
+    </div>
+
+    <div class="selection-container">
+        {% if day %}
+        <div class="">{{ day }}</div>
+        {% elif year %}
+        {% include "inc/selection/day.html" %}
+        {% endif %}
+    </div>
+
+    <div class="selection-container">
+        {% if day %}
+        <div class="">{{ day }}</div>
+        {% elif month %}
+        {% include "inc/selection/day.html" %}
+        {% endif %}
+    </div>
+    <div class="selection-container">
+        {% if day %}
+        <div class="">{{ day }}</div>
+        {% elif month %}
+        {% include "inc/selection/day.html" %}
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
