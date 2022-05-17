@@ -4,7 +4,14 @@ import pytz
 import logging
 from .calendar import fetch_calblocks, top_of_hour
 from .config import config
-from .db import compile_choices, get_db, fetch_choices
+from .db import (
+    compile_choices,
+    get_db,
+    fetch_choices,
+    is_primary_locked,
+    is_primary_free,
+    get_lastrun_primary,
+)
 from .iit_app import create_app
 
 log = logging.getLogger(__name__)
@@ -163,3 +170,50 @@ def test_get_choices():
     # The times should be 3 hours apart
     for (i, la_time) in enumerate(la_times):
         assert ny_times[i] - la_types[i] == 3
+
+
+import asyncio
+import time
+from multiprocessing import Process
+
+async def start_background():
+    compile_choices()
+
+
+def test_primary_lock():
+    """Test that databae semaphore locks
+
+    IMPORTANT NOTE: make sure this database construction takes a while!
+    """
+
+    assert is_primary_free() == True
+    assert is_primary_locked() == False
+    assert get_lastrun_primary() is None
+
+    proc = Process(target=compile_choices)
+    proc.start()
+    time.sleep(0.6)  # wait for a bit.
+
+    assert is_primary_free() == False
+    assert is_primary_locked() == True
+    
+    # wait for a bit more for the process to complete
+    proc.join()
+    assert is_primary_free() == True
+    assert is_primary_locked() == False
+
+    assert get_lastrun_primary() is not None
+    
+    # Just make sure it's recent and not wildly out of date
+    assert get_lastrun_primary() > arrow.utcnow().shift(hours=-1)
+    assert get_lastrun_primary() < arrow.utcnow().shift(hours=+1)
+
+    # Also make sure the secondary table has been copied.
+    db = get_db()
+    curs = db.cursor()
+    curs.execute("SELECT COUNT(*) FROM choices_secondary")
+    secondary_count = curs.fetchone()[0]
+    curs.execute("SELECT COUNT(*) FROM choices_primary")
+    primary_count = curs.fetchone()[0]
+    curs.close()
+    assert secondary_count == primary_count

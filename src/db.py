@@ -11,36 +11,152 @@ import pytz
 
 log = logging.getLogger(__name__)
 
-TABLENAME = "choices"
-
+CHOICES = "choices"
+STATE = "state"
+CHOICES_PRIMARY = f"{CHOICES}_primary"
+CHOICES_SECONDARY = f"{CHOICES}_secondary"
+STATE_FREE = "free"
+STATE_LOCKED = "locked"
 # start and end will be seconds since epoch, UTC
 MIGRATIONS = [
-    f"""CREATE TABLE IF NOT EXISTS {TABLENAME} (
+    # compiling the calendars take a while, so we need
+    # to come up with a semaphore-like infrastructure.
+    f"""CREATE TABLE IF NOT EXISTS {CHOICES_PRIMARY} (
         block TEXT,
         start INT,
         end INT
-    )
-    """,
+    )""",
+
+    f"""CREATE TABLE IF NOT EXISTS {CHOICES_SECONDARY} (        
+        block TEXT,
+        start INT,
+        end INT
+    )""",
+
+    f"""CREATE TABLE IF NOT EXISTS {STATE} (
+        tbl TEXT,
+        state TEXT,
+        lastrun INT
+    )""",
 ]
 
-CLEAR_CHOICES = f"""
-DELETE FROM {TABLENAME};
+LOCK_PRIMARY_TABLE = f"""
+    UPDATE {STATE}
+    SET state='{STATE_LOCKED}'
+    WHERE tbl='primary'
 """
 
-INSERT_CHOICE = f"""
-INSERT INTO {TABLENAME}
+UNLOCK_PRIMARY_TABLE = f"""
+    UPDATE {STATE}
+    SET state='{STATE_FREE}'
+    WHERE tbl='primary'
+"""
+
+LOCK_SECONDARY_TABLE = f"""
+    UPDATE {STATE}
+    SET state='{STATE_LOCKED}'
+    WHERE tbl='secondary'
+"""
+
+UNLOCK_SECONDARY_TABLE = f"""
+    UPDATE {STATE}
+    SET state='{STATE_FREE}'
+    WHERE tbl='secondary'
+"""
+
+IS_PRIMARY_IN_STATE = f"""
+SELECT COUNT(*) FROM {STATE}
+WHERE tbl='primary';
+"""
+
+SET_PRIMARY_INITIAL_FREE = f"""
+INSERT INTO {STATE}
+(tbl, state)
+VALUES
+('primary', 'free')
+"""
+
+SET_SECONDARY_INITIAL_FREE = f"""
+INSERT INTO {STATE}
+(tbl, state)
+VALUES
+('secondary', 'free')
+"""
+
+IS_SECONDARY_IN_STATE = f"""
+SELECT COUNT(*) FROM {STATE}
+WHERE tbl='secondary';
+"""
+
+IS_PRIMARY_LOCKED = f"""
+    SELECT COUNT(*)
+    FROM {STATE}
+    WHERE
+        tbl='primary' AND
+        state='{STATE_LOCKED}'
+"""
+
+IS_PRIMARY_FREE = f"""
+    SELECT COUNT(*)
+    FROM {STATE}
+    WHERE
+        tbl='primary' AND
+        state='{STATE_FREE}'
+"""
+
+UPDATE_PRIMARY_LAST_RUN = f"""
+    UPDATE {STATE}
+    SET lastrun = ?
+    WHERE tbl='primary'
+"""
+
+UPDATE_SECONDARY_LAST_RUN = f"""
+    UPDATE {STATE}
+    SET lastrun = ?
+    WHERE tbl='primary'
+"""
+
+GET_LAST_RUN_PRIMARY = f"""
+    SELECT lastrun
+    FROM {STATE}
+    WHERE
+        tbl='primary'
+"""
+
+GET_LAST_RUN_SECONDARY = f"""
+    SELECT lastrun
+    FROM {STATE}
+    WHERE
+        tbl='secondary'
+"""
+
+CLEAR_PRIMARY = f"""
+DELETE FROM {CHOICES_PRIMARY};
+"""
+
+CLEAR_SECONDARY = f"""
+DELETE FROM {CHOICES_SECONDARY};
+"""
+
+INSERT_CHOICE_PRIMARY = f"""
+INSERT INTO {CHOICES_PRIMARY}
 (block, start, end)
 VALUES
 (?,     ?,     ?  )
 """
 
-SELECT_BY_BLOCK = f"""
-SELECT block, start, end FROM {TABLENAME}
+SELECT_BY_BLOCK_PRIMARY = f"""
+SELECT block, start, end FROM {CHOICES_PRIMARY}
 WHERE block=?
 """
 
-SELECT_BY_BLOCK_AND_DATE = f"""
-SELECT block, start, end FROM {TABLENAME}
+SELECT_BY_BLOCK_SECONDARY = f"""
+SELECT block, start, end FROM {CHOICES_SECONDARY}
+WHERE block=?
+"""
+
+SELECT_BY_BLOCK_AND_DATE_PRIMARY = f"""
+SELECT block, start, end FROM {CHOICES_PRIMARY}
 WHERE block=?
 AND
     start >= ?
@@ -48,6 +164,31 @@ AND
     end <= ?
 """
 
+SELECT_BY_BLOCK_AND_DATE_SECONDARY = f"""
+SELECT block, start, end FROM {CHOICES_SECONDARY}
+WHERE block=?
+AND
+    start >= ?
+    AND
+    end <= ?
+"""
+
+DUPLICATE_PRIMARY_TO_SECONDARY = f"""
+INSERT INTO {CHOICES_SECONDARY}
+SELECT * FROM {CHOICES_PRIMARY}
+"""
+
+def ensure_state_tables(conn):
+    curs = conn.cursor()
+    curs.execute(IS_PRIMARY_IN_STATE)
+    if not int(curs.fetchone()[0]):
+        curs.execute(SET_PRIMARY_INITIAL_FREE)
+        conn.commit()
+    curs.execute(IS_SECONDARY_IN_STATE)
+    if not int(curs.fetchone()[0]):
+        curs.execute(SET_SECONDARY_INITIAL_FREE)
+        conn.commit()
+    curs.close()
 
 def get_db():
     conn = sqlite3.connect(config.database_path)
@@ -57,6 +198,7 @@ def get_db():
         curr.execute(migration)
         conn.commit()
     curr.close()
+    ensure_state_tables(conn)
     return conn
 
 
@@ -82,12 +224,93 @@ def intdt(t: int, tzinfo=pytz.utc):
 A = arrow.get
 
 
-def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
+def lock_primary_table():
     conn = get_db()
+    curs = conn.cursor()
+    log.info("LOCKING PRIMARY TABLE")
+    log.debug(LOCK_PRIMARY_TABLE)
+    curs.execute(LOCK_PRIMARY_TABLE)
+    conn.commit()
+    conn.close()
+
+def unlock_primary_table():
+    conn = get_db()
+    curs = conn.cursor()
+    log.debug(UNLOCK_PRIMARY_TABLE)
+    curs.execute(UNLOCK_PRIMARY_TABLE)
+    log.info("PRIMARY TABLE UNLOCKED")
+    conn.commit()
+    conn.close()
+
+def set_lastrun_primary(when=arrow.utcnow()):
+    conn = get_db()
+    curs = conn.cursor()
+    ts = int(when.timestamp())
+    curs.execute(UPDATE_PRIMARY_LAST_RUN, (ts,))
+    conn.commit()
+    conn.close()
+
+def get_lastrun_primary() -> arrow.Arrow:
+    """ Get the last time the compilation was run (as UTC arrow) """
+    conn = get_db()
+    curs = conn.cursor()
+    log.debug(GET_LAST_RUN_PRIMARY)
+    curs.execute(GET_LAST_RUN_PRIMARY)
+    result = curs.fetchone()
+    curs.close()
+    timestamp : int = result[0]
+    if not timestamp:
+        return None
+    # already set to utc! :-)
+    return arrow.get(int(timestamp))
+
+def _bool_query(QUERY, TRUE_RES=1):
+    conn = get_db()
+    curs = conn.cursor()
+    log.debug(QUERY)
+    curs.execute(QUERY)
+    result = curs.fetchone()
+    conn.close()
+    return int(result[0]) == TRUE_RES
+
+def is_primary_locked():
+    return _bool_query(IS_PRIMARY_LOCKED)
+
+def is_primary_free():
+    return _bool_query(IS_PRIMARY_FREE)
+
+def duplicate_primary_to_secondary():
+    conn = get_db()
+    curs = conn.cursor()
+    curs.execute(LOCK_SECONDARY_TABLE)
+    curs.execute(CLEAR_SECONDARY)
+    curs.execute(DUPLICATE_PRIMARY_TO_SECONDARY)
+    curs.execute(UNLOCK_SECONDARY_TABLE)
+    conn.commit()
+    conn.close()
+
+
+def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
+    # Check if there's already a lock. We typically shouldn't have this
+    # happen, but it may result if the user has A LOT of calendar data
+    # and the interval between fetches is too short.
+    # Another instance is if there's an SQL error.
+    if is_primary_locked():
+        log.warning("Primary table is locked")
+        return
+    # First lock the primary table
+    lock_primary_table()
+    
+    # Get a connection for this session
+    conn = get_db()
+
+    # clear the primary table
     curr = conn.cursor()
-    curr.execute(CLEAR_CHOICES)
+    curr.execute(CLEAR_PRIMARY)
     conn.commit()
     curr = conn.cursor()
+
+    # Insert into the primary table
     for (key, appt) in config.appointments.items():
         d = appt.time
         log.debug("Insert blocks : %s", key)
@@ -102,9 +325,19 @@ def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
             endstamp = int(end_utc.timestamp())
             values = (key, startstamp, endstamp)
             log.debug("  -> %s", values)
-            curr.execute(INSERT_CHOICE, values)
+            curr.execute(INSERT_CHOICE_PRIMARY, values)
         conn.commit()
     curr.close()
+
+    set_lastrun_primary()
+    
+    # Unlock the primary table
+    unlock_primary_table()
+
+    # duplicate the primary table to the secondary table.
+    log.debug("Duplicating primary table...")
+    duplicate_primary_to_secondary()
+    log.debug("Done!")
 
 
 def normalize_record(record):
@@ -124,6 +357,12 @@ def localize_normalize_record(record, tzinfo):
 
 
 def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
+
+    SELECT_BY_BLOCK = SELECT_BY_BLOCK_PRIMARY
+    SELECT_BY_BLOCK_AND_DATE = SELECT_BY_BLOCK_AND_DATE_PRIMARY
+    if is_primary_locked():
+        SELECT_BY_BLOCK = SELECT_BY_BLOCK_SECONDARY
+        SELECT_BY_BLOCK_AND_DATE = SELECT_BY_BLOCK_AND_DATE_SECONDARY
 
     # If a year is't given return the base query
     if not year:
