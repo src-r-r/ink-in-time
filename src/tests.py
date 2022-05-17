@@ -2,6 +2,15 @@ from datetime import datetime, timedelta, time
 import pytest
 import pytz
 import logging
+import asyncio
+import time
+import arrow
+import json
+from flask.testing import Client as TestClient
+from multiprocessing import Process
+from bs4 import BeautifulSoup
+
+from . import util
 from .calendar import fetch_calblocks, top_of_hour
 from .config import config, COMPILEPID_FILE
 from .db import (
@@ -82,6 +91,7 @@ def test_fetch_choices():
 
 import os
 
+
 @pytest.fixture
 def app():
     app = create_app()
@@ -95,6 +105,7 @@ def app():
         compile_choices()
     yield app
 
+
 @pytest.fixture()
 def client(app):
     client = app.test_client()
@@ -105,9 +116,9 @@ def client(app):
             time.sleep(1)
     return client
 
-def test_views(client):
-    
-    is_main = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
+def test_get_views(client):
+
     now = datetime.now()
     resp = client.get("/")
     assert resp.status_code == 200
@@ -119,8 +130,64 @@ def test_views(client):
     assert resp.status_code == 200
 
 
-from . import util
-import arrow
+from .timespan import TimeSpan
+
+
+def soupy(response):
+    return BeautifulSoup(response.text, "html.parser")
+
+
+def test_post_view(client: TestClient):
+
+    now = arrow.utcnow().shift(days=1)
+    block = list(config.appointments.keys())[0]
+    url = f"/{block}/{now.year}/{now.month}/{now.day}/"
+
+    choices = list(fetch_choices(block, now.year, now.month, now.day, now.tzinfo))
+    (block, start, end) = choices[0]
+    timeval = TimeSpan(start, end).as_select_value()
+
+
+    # Will error if nothing is given
+    resp = client.post(url)
+    assert resp.status_code == 200
+    assert "error" in resp.text
+
+    # error if an email is not given
+    resp = client.post(
+        url,
+        data=({"time": timeval, "name": "Somebody"}),
+    )
+    assert resp.status_code == 200
+
+    # error if a name is not given
+    resp = client.post(
+        url,
+        data=({"time": timeval, "email": "user@localhost.localdomain"}),
+    )
+    assert resp.status_code == 200
+    assert "error" in resp.text
+
+    # error if a timeval is omitted
+    resp = client.post(
+        url,
+        data=({"email": "user@localhost.localdomain", "name": "John Doe"}),
+    )
+    assert resp.status_code == 200
+    assert "error" in resp.text
+    # But proceed if everything checks out!
+    resp = client.post(
+        url,
+        data=(
+            {
+                "email": "user@localhost.localdomain",
+                "name": "John Doe",
+                "time": timeval,
+            }
+        ),
+    )
+    assert resp.status_code == 200
+    assert "error" not in resp.text
 
 
 def test_utils():
@@ -184,10 +251,6 @@ def test_get_choices():
         assert ny_times[i] - la_types[i] == 3
 
 
-import asyncio
-import time
-from multiprocessing import Process
-
 async def start_background():
     compile_choices()
 
@@ -208,14 +271,14 @@ def test_primary_lock():
 
     assert is_primary_free() == False
     assert is_primary_locked() == True
-    
+
     # wait for a bit more for the process to complete
     proc.join()
     assert is_primary_free() == True
     assert is_primary_locked() == False
 
     assert get_lastrun_primary() is not None
-    
+
     # Just make sure it's recent and not wildly out of date
     assert get_lastrun_primary() > arrow.utcnow().shift(hours=-1)
     assert get_lastrun_primary() < arrow.utcnow().shift(hours=+1)

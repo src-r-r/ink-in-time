@@ -15,8 +15,8 @@ class TimeSpan:
         return self.end - self.start
     
     def as_select_value(self):
-        start = self.start.timestamp()
-        end = self.end.timestamp()
+        start = int(self.start.timestamp())
+        end = int(self.end.timestamp())
         return f"{start};{end}"
 
     def to_json(self):

@@ -56,6 +56,18 @@ def template_if_exists(tpl: Path):
     return None
 
 
+def add_error(context: T.Dict, field: T.AnyStr, code: T.AnyStr):
+    errors = context.get("errors", {})
+    errors.update(
+        {
+            field: code,
+        }
+    )
+    context["has_errors"] = True
+    context["errors"] = errors
+    return context
+
+
 # callback functions
 
 
@@ -115,6 +127,7 @@ class IitFlask(Flask):
             run_compile_job()
         return super(IitFlask, self).run(*args, **kwargs)
 
+
 ICS_MIME = "text/calendar"
 
 # where the magic happens!
@@ -130,36 +143,18 @@ def create_app(config_filename=None):
 
     if config_filename:
         app.config.from_pyfile(config_filename)
-    
-    @app.route("/stream-mock-ics/<string:set_id>.ics", methods=[GET])
-    def stream_mock_ics(set_id : T.AnyStr):
-        MOCK_ICS_DIR.mkdir(exist_ok=True, parents=True)
-        mock_ics = MOCK_ICS_DIR / str(set_id + ".ics")
-        if not mock_ics.exists():
-            abort(404, f"Mock ICS file {mock_ics} not found")
-        def generate():
-            with mock_ics.open() as f:
-                for line in f:
-                    yield line
-        return app.response_class(generate(), mimetype=ICS_MIME)
-    
-    @app.route("/mockics/<string:set_id>.ics", methods=[GET])
-    def fetch_mock_ics(set_id : T.AnyStr):
-        MOCK_ICS_DIR.mkdir(exist_ok=True, parents=True)
-        mock_ics = MOCK_ICS_DIR / str(set_id + ".ics")
-        if not mock_ics.exists():
-            abort(404, f"Mock ICS file {mock_ics} not found")
-        return mock_ics.read_bytes().decode("ascii")
 
     @app.route(STEPS[0], methods=[GET])
     @app.route(STEPS[1], methods=[GET])
     @app.route(STEPS[2], methods=[GET])
     @app.route(STEPS[3], methods=[GET])
     @app.route(STEPS[4], methods=[GET])
-    def show_appointment_scheduler(block=None, year=None, month=None, day=None):
+    def show_appointment_scheduler(
+        block=None, year=None, month=None, day=None, _extra_conext=None
+    ):
 
         (timezone, tzobj) = extract_tz(request)
-        
+
         # Construct tzstring before anything else
         tzqs = ""
         if timezone:
@@ -169,6 +164,7 @@ def create_app(config_filename=None):
 
         # Fetch the choices, and make sure they're unique
         _values = set()
+        selection = None
         for choice in fetch_more_human_choices(
             block,
             year,
@@ -176,19 +172,25 @@ def create_app(config_filename=None):
             day,
             tzinfo=tzobj,
         ):
-            if choice["value"] in _values:
+            log.debug(choice)
+            if choice["selection"] not in ("time",) and choice["value"] in _values:
                 continue
             choices.append(choice)
-            _values.add(choice["value"])
+            if choice["selection"] not in ("time",):
+                _values.add(choice["value"])
+            selection = choice["selection"]
 
-        for (i, errlabel) in (
-            (block, "appointment"),
-            (year, "year"),
-            (month, "month"),
-            (day, "day"),
+        for (i, errlabel, sel) in (
+            (block, "appointment", "block"),
+            (year, "year", "year"),
+            (month, "month", "month"),
+            (day, "day", "day"),
         ):
-            if i and i not in _values:
-                abort(404)
+            if (sel == selection) and i and (i not in _values):
+                log.error(
+                    "%s/%s (%s) not in %s", errlabel, choice["selection"], i, _values
+                )
+                abort(404, f"{i} is not a valid {errlabel}")
 
         now = arrow.utcnow()
         now = now.to(tzobj)
@@ -225,33 +227,41 @@ def create_app(config_filename=None):
         month_name = None
         if month:
             month_name = list(MN)[month]
-        
+
+        context = {
+            "timezones": [
+                {
+                    "value": t,
+                    "label": t,
+                }
+                for t in pytz.all_timezones
+            ],
+            "choices": choices,
+            "block": block,
+            "choice_template": choice_tpl,
+            "timezone": {
+                "value": timezone,
+                "label": timezone,
+            },
+            "year": year,
+            "month": month,
+            "month_name": month_name,
+            "day": day,
+            "meta": {
+                "back": {
+                    "url": back_url,
+                    "label": back_label,
+                }
+            },
+            "cfg": config,
+        }
+
+        if _extra_conext:
+            context.update(_extra_conext)
+
         # Next, the year.
         # if we don't have a block, render that
-        return render_template(
-            str(INDEX_TEMPLATE),
-            **{
-                "timezones": [(t, t) for t in pytz.all_timezones],
-                "choices": choices,
-                "block": block,
-                "choice_template": choice_tpl,
-                "timezone": {
-                    "value": timezone,
-                    "label": timezone,
-                },
-                "year": year,
-                "month": month,
-                "month_name": month_name,
-                "day": day,
-                "meta": {
-                    "back": {
-                        "url": back_url,
-                        "label": back_label,
-                    }
-                },
-                "cfg": config,
-            },
-        )
+        return render_template(str(INDEX_TEMPLATE), **context)
 
     @app.route(STEPS[4], methods=[POST])
     def submit_complete(block, year=None, month=None, day=None):
@@ -262,5 +272,18 @@ def create_app(config_filename=None):
         email = request.form.get("email")
         name = request.form.get("name")
         details = request.form.get("details")
+
+        context = {"cfg": config, "has_errors": False, "errors": {}}
+
+        if not time:
+            add_error(context, "form_time", "null")
+        if not name:
+            add_error(context, "form_email", "null")
+        if not email:
+            add_error(context, "form_name", "null")
+        
+        if context["has_errors"]:
+            return show_appointment_scheduler(block, year, month, day, context)
+        return render_template(str(CONFIRM_TEMPLATE), **context)
 
     return app

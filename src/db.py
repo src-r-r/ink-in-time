@@ -374,8 +374,9 @@ def localize_normalize_record(record, tzinfo):
 def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
 
     if not block:
-        for appointment in config.appointments:
-            yield appointment
+        for appointment in config.appointments.values():
+            yield (appointment, None, None)
+        return
 
     SELECT_BY_BLOCK = SELECT_BY_BLOCK_PRIMARY
     SELECT_BY_BLOCK_AND_DATE = SELECT_BY_BLOCK_AND_DATE_PRIMARY
@@ -428,27 +429,15 @@ def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
 
 
 def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo=None):
-
-    if not block:
-        for (key, appt) in config.appointments.items():
-            yield {
-                "selection": "block",
-                "block": None,
-                "value": key,
-                "label": appt.label,
-                "icon": appt.icon,
-                "meta": appt,
-            }
-        return
-
-    log.info("Fetching choices with tz=%s", tzinfo)
-    for (block, start, end) in fetch_choices(block, year, month, day, tzinfo):
+    log.debug("=> %s/%s/%s/%s", block, year, month, day)
+    for (blockval, start, end) in fetch_choices(block, year, month, day, tzinfo):
+        log.debug("  <= %s, %s, %s", block, start, end)
         if day:
             value = TimeSpan(start, end).to_json()
             log.debug(value)
             yield {
                 "selection": "time",
-                "block": block,
+                "block": blockval,
                 "value": value,
                 "label": None,
                 "icon": None,
@@ -456,7 +445,7 @@ def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo
         elif month:
             yield {
                 "selection": "day",
-                "block": block,
+                "block": blockval,
                 "value": start.day,
                 "label": start.day,
                 "icon": None,
@@ -464,7 +453,7 @@ def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo
         elif year:
             yield {
                 "selection": "month",
-                "block": block,
+                "block": blockval,
                 "value": start.month,
                 "label": list(month_name)[start.month],
                 "icon": None,
@@ -472,16 +461,16 @@ def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo
         elif block:
             yield {
                 "selection": "year",
-                "block": block,
+                "block": blockval,
                 "value": start.year,
                 "label": start.year,
                 "icon": None
             }
         else:
             yield {
-                "selection": "year",
+                "selection": "block",
                 "block": None,
-                "value": block.id,
-                "label": block.label,
-                "icon": block.icon,
+                "value": blockval.id,
+                "label": blockval.label,
+                "icon": blockval.icon,
             }

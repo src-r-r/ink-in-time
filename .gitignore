@@ -8,3 +8,4 @@ mock_data
 .compilepid
 node_modules
 package-lock.json
+db

@@ -1,32 +1,55 @@
 
 <form class="form">
+    {% if has_errors %}
+        <div class="alert error">
+            <p>The form appears to have some errors</p>
+        </div>
+    {% endif %}
     <div class="section-container">
-        <select class="form-select">
-        {% for item in choices %}
-            <option value="{{item.value.for_select}}">
-                {{ item.value.human.start }}
-                -
-                {{ item.value.human.end }}
-                ({{ item.value.human.duration}})
-            </option>
-        {% endfor %}
-        </select>
-        <div class="form required">
+        <div class="form required{% if errors and errors.form_time %} error{% endif %}">
+            <label for="time">Time</label>
+            <select class="form-select" name="time">
+            {% for item in choices %}
+                <option value="{{item.value.for_select}}">
+                    {{ item.value.human.start }}
+                    -
+                    {{ item.value.human.end }}
+                    ({{ item.value.human.duration}})
+                </option>
+            {% endfor %}
+            </select>
+            <p class="error">
+                {% if errors.form_time == "null" %}
+                This field is required.
+                {% endif %}
+            </p>
+        </div>
+        <div class="form required{% if errors and errors.form_email %} error{% endif %}">
             <label for="email">Email</label>
             <input type="email"
                     class="form-control"
                     name="email"
                     placeholder="Required - user@example.com"
                     />
+            <p class="error">
+                {% if errors.form_email == "null" %}
+                This field is required.
+                {% endif %}
+            </p>
         </div>
-        <div class="form required">
+        <div class="form required{% if errors and errors.form_name %} error{% endif %}">
             <label for="email">Name</label>
             <input type="email"
                     class="form-control"
                     name="email"
-                    />
+            />
+            <p class="error">
+                {% if errors.form_name == "null" %}
+                This field is required.
+                {% endif %}
+            </p>
         </div>
-        <div>
+        <div class="form">
             <label for="notes">Any Notes for the Meeting?</label>
             <textarea name="notes" type="text" class="form-control"></textarea>
         </div>
