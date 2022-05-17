@@ -4,3 +4,7 @@ __pycache__
 .vscode
 config/mmf.yml
 config/iit.yml
+mock_data
+.compilepid
+node_modules
+package-lock.json

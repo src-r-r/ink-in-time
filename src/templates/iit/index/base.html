@@ -12,6 +12,10 @@
       integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
       crossorigin="anonymous"
     />
+    <!-- bootstrap icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.2/font/bootstrap-icons.css">
+
+    <!-- local styles & scripts -->
     <link
       href="/static/iit/css/index.css"
       rel="stylesheet"
@@ -23,9 +27,33 @@
     <title>{% block site_title %}{% endblock %}</title>
   </head>
   <body>
-    <h1 class="title">{% block title %}{% endblock %}</h1>
 
-    <section id="header">{% block header %}{% endblock %}</section>
+    <section id="header">
+      <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+          {% if cfg.backref_url %}
+            <div class="navbar-brand">
+              <a href="{{ cfg.backref_url }}" class="btn btn-outline-dark">
+                <i class="bi bi-arrow-left"></i>
+                <span>{{ cfg.backref_label }}</span>
+              </a>
+            </div>
+          {% endif %}
+          <a class="navbar-brand" href="/">Ink-in Time Scheduler</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              {% block nav_links %}{% endblock %}
+            </ul>
+          </div>
+        </div>
+      </nav>
+      {% block header %}{% endblock header %}
+    </section>
+    
+    <h1 class="title">{% block title %}{% endblock %}</h1>
 
     <main>{% block main %}{% endblock %}</main>
 

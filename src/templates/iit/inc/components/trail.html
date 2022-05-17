@@ -1,0 +1,16 @@
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    {% if block %}
+    <span class="badge bg-secondary m-2 p-2">{{ block }} Meeting</span>
+    {% endif %}
+    {% if year %}
+    <span class="badge bg-secondary m-2 p-2">{{ year }}</span>
+    {% endif %}
+    {% if month %}
+    <span class="badge bg-secondary m-2 p-2"> / {{ month_name }}</span>
+    {% endif %}
+    {% if day %}
+    <span class="badge bg-secondary m-2 p-2"> / {{ day }}</span>
+    {% endif %}
+</nav>
+    

@@ -4,6 +4,7 @@ from yaml import load, dump
 from datetime import time, datetime, timedelta
 from pytz import timezone
 from orderedattrdict import AttrDict
+import humanize
 import arrow
 import logging
 import logging.config
@@ -22,7 +23,11 @@ HERE = Path(__file__).parent.resolve()
 PROJ_DIR = HERE.parent
 CONFIG_DIR = PROJ_DIR / "config"
 CONFIG_YML = CONFIG_DIR / "iit.yml"
+EMAIL_TEMPLATE = CONFIG_DIR / "email_template.txt"
+COMPILEPID_FILE : Path = PROJ_DIR / ".compilepid"
 
+MOCK_DIR = PROJ_DIR / "mock_data"
+MOCK_ICS_DIR = MOCK_DIR / "ics"
 
 class Config:
 
@@ -41,7 +46,7 @@ class Config:
 
         self.appointments = {}
         for (k, v) in sched["appointments"].items():
-            self.appointments[k] = Appointment(k, v["label"], v["time"])
+            self.appointments[k] = Appointment(k, v["label"], v["time"], v.get("icon"))
 
         database = self._cfg["database"] 
         cnfpath = database["path"]
@@ -57,8 +62,26 @@ class Config:
         self.free_calendars = self._cfg["calendars"]["free"]
         self.blocked_calendars = self._cfg["calendars"]["blocked"]
 
-        self.email = self._cfg["email"]
+        self.organizer_cn = self._cfg["organizer"]["cn"]
+        self.organizer_email = self._cfg["organizer"]["email"]
+        self.organizer_role = self._cfg["organizer"].get("role")
+
+        self.email_server = self._cfg["email"]["server"]
+        self.email_organizer_subject = self._cfg["email"]["organizer"]["subject"]
+        self.email_participant_subject = self._cfg["email"]["participant"]["subject"]
         self.LOGGING = self._cfg["logging"]
+
+        self.ics_summary = self._cfg["ics"]["summary"]
+        self.ics_dt_format_start = self._cfg["ics"]["dt_format"]["start"]
+        self.ics_dt_format_end = self._cfg["ics"]["dt_format"]["end"]
+
+        self._humanize_func = self._cfg["ics"].get("humanize_function", "precisedelta")
+
+        self.backref_url = None
+        self.backref_label = None
+        if "site" in self._cfg and "backref" in self._cfg["site"]:
+            self.backref_url = self._cfg["site"]["backref"]["url"]
+            self.backref_label = self._cfg["site"]["backref"]["label"]
     
     def get_working_hours(self, ref_dt : arrow.Arrow):
         """Get the working hours for a given datetime
@@ -86,6 +109,10 @@ class Config:
         e = e.to(ref_dt.tzinfo)
         
         return (s, e)
+    
+    def call_humanize(self, *args, **kwargs):
+        fnc = getattr(humanize, self._humanize_func)
+        return fnc(*args, **kwargs)
     
     def get_end_view_dt(self, when=datetime.now()):
         tz = self.my_timezone

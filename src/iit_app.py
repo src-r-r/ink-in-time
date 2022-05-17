@@ -1,151 +1,266 @@
-from flask import Flask, render_template, request, abort
+import typing as T
+from flask import Flask, render_template, request, abort, Request
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, parse_qsl
+from werkzeug.serving import is_running_from_reloader
+import time
+import os
+import atexit
 from calendar import month_name as MN
 import pytz
 import arrow
-from .config import config
+from multiprocessing import Process
+from pathlib import Path
+import logging
+
+from .config import config, COMPILEPID_FILE, MOCK_ICS_DIR
 from .checker import check_config
 from .db import fetch_more_human_choices
 from .calendar import calblock_choices
-import logging
+from .db import compile_choices, get_lastrun_primary
+
 log = logging.getLogger(__name__)
 
+
+TPL_BASE = Path("iit")
+IDX_TPL = TPL_BASE / "index"
+INC_TPL = TPL_BASE / "inc"
+INDEX_TEMPLATE = IDX_TPL / "timeblock_selection.html"
+CONFIRM_TEMPLATE = IDX_TPL / "confirmation.html"
+
+CHOICE_TPL_DIR = INC_TPL / "choice"
+BLOCK_CHOICE_TPL = CHOICE_TPL_DIR / "appointment_type.html"
+YEAR_CHOICE_TPL = CHOICE_TPL_DIR / "year.html"
+MONTH_CHOICE_TPL = CHOICE_TPL_DIR / "month.html"
+DAY_CHOICE_TPL = CHOICE_TPL_DIR / "day.html"
+
+
+STEPS = [
+    "/",
+    "/<string:block>/",
+    "/<string:block>/<int:year>/",
+    "/<string:block>/<int:year>/<int:month>/",
+    "/<string:block>/<int:year>/<int:month>/<int:day>/",
+]
+GET = "GET"
+POST = "POST"
+
+
+def template_exists(tpl: Path):
+    return (Path("templates") / tpl).exists()
+
+
+def template_if_exists(tpl: Path):
+    if template_exists(tpl):
+        return str(tpl)
+    return None
+
+
+# callback functions
+
+
+def run_compile_job(request=None):
+    """Compile the calendars & blocks together
+
+    This is supposed to behave like a task qeue, but minimized.
+
+    Args:
+        request (flask.Request, optional): Only used to keep flask happy. Defaults to None.
+    """
+    lastrun = get_lastrun_primary()
+    interval = config.db_compilation_interval
+    now = arrow.utcnow()
+    do_run = False
+    if lastrun is None:
+        do_run = True
+    else:
+        log.debug("not compiling -- hasn't been long enough")
+        do_run = now - lastrun > interval
+    if not do_run:
+        return request
+    log.info("kicking off compilation job")
+    if COMPILEPID_FILE.exists():
+        log.warning("%s exists, not running", COMPILEPID_FILE)
+        return request
+    proc = Process(target=compile_choices)
+    # Delay writing to the file for a bit to delay the reloader
+    proc.start()
+    time.sleep(0.5)
+    pid = proc.pid
+    COMPILEPID_FILE.write_text(str(pid))
+    return request
+
+
+def extract_tz(req: Request):
+    timezones = [{"value": tz, "label": tz} for tz in pytz.all_timezones]
+    qs = parse_qs(req.query_string)
+    timezone = qs.get(b"timezone", str(config.my_timezone))
+    if isinstance(timezone, list):
+        timezone = timezone[0].decode("ascii")
+    log.debug("timezone = %s", timezone)
+    if timezone and (timezone not in pytz.all_timezones):
+        log.error("Invalid timezone %s", timezone)
+        raise ValueError("Invalid Timezone")
+    return (timezone, pytz.timezone(timezone))
+
+
+class IitFlask(Flask):
+    def __init__(self, *args, **kwargs):
+        super(IitFlask, self).__init__(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+
+        # This is a guard against the werkzeig reloader
+        if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+            run_compile_job()
+        return super(IitFlask, self).run(*args, **kwargs)
+
+ICS_MIME = "text/calendar"
+
+# where the magic happens!
+
+
 def create_app(config_filename=None):
-   # create a minimal app
-   app = Flask(__name__)
-   if config_filename:
-      app.config.from_pyfile(config_filename)
 
-   
-   STEPS = [
-      "/",
-      "/<string:block>/",
-      "/<string:block>/<int:year>/",
-      "/<string:block>/<int:year>/<int:month>/",
-      "/<string:block>/<int:year>/<int:month>/<int:day>/",
-   ]
-   GET = "GET"
-   POST = "POST"
+    # create the application
+    app = IitFlask(__name__)
 
+    # assign the callbacks
+    app.after_request(run_compile_job)
 
-   @app.route(STEPS[0], methods=[GET])
-   @app.route(STEPS[1], methods=[GET])
-   @app.route(STEPS[2], methods=[GET])
-   @app.route(STEPS[3], methods=[GET])
-   @app.route(STEPS[4], methods=[GET])
-   def show_appointment_scheduler(block=None, year=None, month=None, day=None):
-      # TODO: sanity checking of timespan; user might
-      #       be able to specify time outside of workday!!!
+    if config_filename:
+        app.config.from_pyfile(config_filename)
+    
+    @app.route("/stream-mock-ics/<string:set_id>.ics", methods=[GET])
+    def stream_mock_ics(set_id : T.AnyStr):
+        MOCK_ICS_DIR.mkdir(exist_ok=True, parents=True)
+        mock_ics = MOCK_ICS_DIR / str(set_id + ".ics")
+        if not mock_ics.exists():
+            abort(404, f"Mock ICS file {mock_ics} not found")
+        def generate():
+            with mock_ics.open() as f:
+                for line in f:
+                    yield line
+        return app.response_class(generate(), mimetype=ICS_MIME)
+    
+    @app.route("/mockics/<string:set_id>.ics", methods=[GET])
+    def fetch_mock_ics(set_id : T.AnyStr):
+        MOCK_ICS_DIR.mkdir(exist_ok=True, parents=True)
+        mock_ics = MOCK_ICS_DIR / str(set_id + ".ics")
+        if not mock_ics.exists():
+            abort(404, f"Mock ICS file {mock_ics} not found")
+        return mock_ics.read_bytes().decode("ascii")
 
-      TEMPLATE = "index/timeblock_selection.html"
+    @app.route(STEPS[0], methods=[GET])
+    @app.route(STEPS[1], methods=[GET])
+    @app.route(STEPS[2], methods=[GET])
+    @app.route(STEPS[3], methods=[GET])
+    @app.route(STEPS[4], methods=[GET])
+    def show_appointment_scheduler(block=None, year=None, month=None, day=None):
 
-      appts = config.appointments
+        (timezone, tzobj) = extract_tz(request)
+        
+        # Construct tzstring before anything else
+        tzqs = ""
+        if timezone:
+            tzqs = f"?timezone={timezone}"
 
-      # Figure out timezones
-      
-      timezones = [{"value" : tz, "label": tz} for tz in pytz.all_timezones]
-      qs = parse_qs(request.query_string)
-      timezone = qs.get(b"timezone", str(config.my_timezone))
-      if isinstance(timezone, list):
-         timezone = timezone[0].decode("ascii")
-      log.debug("timezone = %s", timezone)
-      if timezone and (timezone not in pytz.all_timezones):
-         log.error("Invalid timezone %s", timezone)
-         # log.info("Valid timezones: %s", pytz.all_timezones)
-         abort(400)
-      tzobj = pytz.timezone(timezone)
+        choices = []
 
-      # if we don't have a block, render that
-      if not block:
-         context = {
-               "choices": [
-                  {"value": k, "label": a.label, "time": a.time}
-                  for (k, a) in appts.items()
-               ],
-               "timezones": timezones,
-               "timezone": {
-                  "value": timezone,
-                  "label": timezone,
-               },
-         }
-         return render_template(TEMPLATE, **context)
-      else:
-         # or check it
-         if block not in appts:
-               abort(Response(f"Block {block} not found"))
+        # Fetch the choices, and make sure they're unique
+        _values = set()
+        for choice in fetch_more_human_choices(
+            block,
+            year,
+            month,
+            day,
+            tzinfo=tzobj,
+        ):
+            if choice["value"] in _values:
+                continue
+            choices.append(choice)
+            _values.add(choice["value"])
 
-      now = arrow.utcnow()
-      now = now.to(tzobj)
-      now_year = now.year
-      now_month = now.month
+        for (i, errlabel) in (
+            (block, "appointment"),
+            (year, "year"),
+            (month, "month"),
+            (day, "day"),
+        ):
+            if i and i not in _values:
+                abort(404)
 
-      appt = appts[block]
-      duration = appt.time
-      _values = []
-      choices = []
-      for choice in fetch_more_human_choices(block, year, month, day, tzinfo=tzobj):
-         if choice["value"] in _values:
-               continue
-         choices.append(choice)
-         _values.append(choice["value"])
+        now = arrow.utcnow()
+        now = now.to(tzobj)
+        now_year = now.year
+        now_month = now.month
 
-      # construct meta info
+        choice_tpl = template_if_exists(BLOCK_CHOICE_TPL)
 
-      # I know there's a shorter way to construct this,
-      # but it can lead to getting confusing, so we'll do it the
-      # long way for now.
-      tzqs = ""
-      if timezone:
-         tzqs=f"?timezone={timezone}"
-      if block:
-         back_url = f"/{tzqs}"
-         back_label = "Choose Time Block"
-      if year:
-         back_url = f"/{block}/{tzqs}"
-         back_label = f"Choose Year"
-      if month:
-         back_url = f"/{block}/{year}/{tzqs}"
-         back_label = f"Choose Month"
-      if day:
-         back_url = f"/{block}/{year}/{month}/{tzqs}"
-         back_label = f"Choose Day"
-      
-      month_name=None
-      if month:
-         month_name = list(MN)[month]
+        # I know there's a shorter way to construct this,
+        # but it can lead to getting confusing, so we'll do it the
+        # long way for now.
+        back_url = None
+        back_label = None
+        if block:
+            # Previous: time block, current: year
+            back_url = f"/{tzqs}"
+            back_label = "Choose Appointment"
+            choice_tpl = template_if_exists(YEAR_CHOICE_TPL)
+        if year:
+            # Previous: year, current: month
+            back_url = f"/{block}/{tzqs}"
+            back_label = f"Choose Year"
+            choice_tpl = template_if_exists(MONTH_CHOICE_TPL)
+        if month:
+            # Previous: month, current: day
+            back_url = f"/{block}/{year}/{tzqs}"
+            back_label = f"Choose Month"
+            choice_tpl = template_if_exists(DAY_CHOICE_TPL)
+        if day:
+            # Previous: day, current: time selection
+            back_url = f"/{block}/{year}/{month}/{tzqs}"
+            back_label = f"Choose Day"
 
-      # Next, the year.
-      # if we don't have a block, render that
-      return render_template(TEMPLATE, **{
-         "timezones": [(t, t) for t in pytz.all_timezones],
-         "choices": choices,
-         "block": block,
-         "timezone": {
-               "value": timezone,
-               "label": timezone,
-         },
-         "timezones": timezones,
-         "year": year,
-         "month": month,
-         "month_name": month_name,
-         "day": day,
-         "meta": {
-               "back": {
-                  "url": back_url,
-                  "label": back_label,
-               }
-         },
-      })
+        month_name = None
+        if month:
+            month_name = list(MN)[month]
+        
+        # Next, the year.
+        # if we don't have a block, render that
+        return render_template(
+            str(INDEX_TEMPLATE),
+            **{
+                "timezones": [(t, t) for t in pytz.all_timezones],
+                "choices": choices,
+                "block": block,
+                "choice_template": choice_tpl,
+                "timezone": {
+                    "value": timezone,
+                    "label": timezone,
+                },
+                "year": year,
+                "month": month,
+                "month_name": month_name,
+                "day": day,
+                "meta": {
+                    "back": {
+                        "url": back_url,
+                        "label": back_label,
+                    }
+                },
+                "cfg": config,
+            },
+        )
 
+    @app.route(STEPS[4], methods=[POST])
+    def submit_complete(block, year=None, month=None, day=None):
+        # Once the form has been submitted
+        # construct the ics as an attachment
+        # email both the user and the "owners"
+        time = request.form.get("time")
+        email = request.form.get("email")
+        name = request.form.get("name")
+        details = request.form.get("details")
 
-   @app.route(STEPS[4], methods=[POST])
-   def submit_complete(block, year=None, month=None, day=None):
-      # Once the form has been submitted
-      # construct the ics as an attachment
-      # email both the user and the "owners"
-      time = request.form.get("time")
-      email = request.form.get("email")
-      details = request.form.get("details")
-   
-   return app
+    return app

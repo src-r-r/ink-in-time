@@ -1,0 +1,12 @@
+{
+  "desc": "maybe-their ICS",
+  "security": [],
+  "protected": false,
+  "status": "",
+  "response": {
+    "statusCode": 200,
+    "schema": {
+      "type": "text/calendar"
+    }
+  }
+}

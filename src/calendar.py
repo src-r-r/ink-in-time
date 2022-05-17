@@ -1,16 +1,16 @@
 import typing as T
-from .config import config
 import vobject
 import requests
 import logging
 import pytz
 import humanize as hu
 import arrow
-from .timespan import TimeSpan
 import re
 from cachetools import cached, LRUCache, TTLCache
 from collections import namedtuple
 from datetime import timedelta, datetime, time, date
+from src.timespan import TimeSpan
+from src.config import config
 
 log = logging.getLogger(__name__)
 
@@ -158,9 +158,13 @@ class CalendarCollection:
 def fetch_vobject(url) -> vobject.iCalendar:
     log.debug("Fetching %s", url)
     chunk = bytes()
-    resp = requests.get(url)
-    for event in vobject.readComponents(resp.text):
-        yield event
+    try:
+        resp = requests.get(url)
+        for event in vobject.readComponents(resp.text):
+            yield event
+    except Exception as e:
+        log.error("%s: %s", url, e)
+        return
 
 
 def vevent_to_timeblock(event):
@@ -177,7 +181,10 @@ def get_events_from_vcal(vcal):
         yield e.contents
 
 
-def get_tz_from_vcal(vcal) -> pytz.timezone:
+def get_tz_from_vcal(vcal, default=str(config.my_timezone)) -> pytz.timezone:
+    if "x-wr-timezone" not in vcal.contents:
+        log.warning("ical does not have x-wr-timzone. Using %s", default)
+        return default
     tz: T.AnyStr = vcal.contents["x-wr-timezone"][0].value
     return pytz.timezone(tz)
 
@@ -250,7 +257,7 @@ def fetch_calblocks(
     # Now go through each of the `duration` blocks starting at inittime
     while a1 + duration < endsequence:
         a2 = a1 + duration
-        log.debug("Checking for time %s -> %s (duration=%s)", a1, a2, duration)
+        # log.debug("Checking for time %s -> %s (duration=%s)", a1, a2, duration)
         if not does_conflict(collection, a1, a2):
             yield TimeSpan(a1, a2)
         a1 = a2

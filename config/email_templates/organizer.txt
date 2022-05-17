@@ -1,0 +1,16 @@
+Hi, you have an upcoming meeting with %(participant_cn)s (%(participant_email)s).
+
+When: %(human_start)s
+Duration: %(human_duration)s
+Timezone: %(participant_email)s
+
+
+The meeeting is at the following URL:
+
+            %(meeting_link)s
+
+---
+
+Additional Notes:
+
+%(note)s

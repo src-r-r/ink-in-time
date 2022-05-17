@@ -1,0 +1,17 @@
+<div class="section-container">
+  {% for item in choices %}
+  {% if choice_template %}
+  {% include choice_template %}
+  {% else %}
+  <a
+    href="{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}"
+    class="btn btn-lg btn-outline-primary"
+  >
+    <p class="fs-1">{{ item.label }}</p>
+    {% if item.icon %}
+    <div class="container-fluid">{{item.icon}}</div>
+    {% endif %}
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>

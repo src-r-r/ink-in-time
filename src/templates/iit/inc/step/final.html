@@ -1,0 +1,37 @@
+
+<form class="form">
+    <div class="section-container">
+        <select class="form-select">
+        {% for item in choices %}
+            <option value="{{item.value.for_select}}">
+                {{ item.value.human.start }}
+                -
+                {{ item.value.human.end }}
+                ({{ item.value.human.duration}})
+            </option>
+        {% endfor %}
+        </select>
+        <div class="form required">
+            <label for="email">Email</label>
+            <input type="email"
+                    class="form-control"
+                    name="email"
+                    placeholder="Required - user@example.com"
+                    />
+        </div>
+        <div class="form required">
+            <label for="email">Name</label>
+            <input type="email"
+                    class="form-control"
+                    name="email"
+                    />
+        </div>
+        <div>
+            <label for="notes">Any Notes for the Meeting?</label>
+            <textarea name="notes" type="text" class="form-control"></textarea>
+        </div>
+        <div class="container button-group p-4">
+            <input type="submit" value="Schedule" class="btn btn-large btn-primary align-right"/>
+        </div>
+    </div>
+</form>

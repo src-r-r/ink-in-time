@@ -1,0 +1,30 @@
+{% extends "iit/index/base.html" %}
+{% block site_title %}Ink-In Time{% endblock %}
+{% block title %}
+{% include "iit/inc/dynamic/title.html" %}
+{% endblock %}
+
+{% block header %}
+{% include "iit/inc/components/trail.html" %}
+{% endblock header %}
+
+{% block main %}
+<div class="container">
+    <div class="container-fluid">
+        {% include "iit/inc/components/back-button.html" %}
+    </div>
+
+    {% if day %}
+    <div class="container alert alert-info">
+        Please add your email and any additonal info.
+    </div>
+    {% endif %}
+
+    {% if not day %}
+        {% include "iit/inc/step/all.html" %}
+    {% else %}
+        {% include "iit/inc/step/final.html" %}
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -3,7 +3,7 @@ import pytest
 import pytz
 import logging
 from .calendar import fetch_calblocks, top_of_hour
-from .config import config
+from .config import config, COMPILEPID_FILE
 from .db import (
     compile_choices,
     get_db,
@@ -11,8 +11,9 @@ from .db import (
     is_primary_locked,
     is_primary_free,
     get_lastrun_primary,
+    does_primary_or_secondary_exist,
 )
-from .iit_app import create_app
+from .iit_app import create_app, run_compile_job
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def test_compile_choices():
     compile_choices()
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT COUNT(*) FROM choices;")
+    cur.execute("SELECT COUNT(*) FROM choices_primary;")
     assert cur.fetchone()[0] > 0
 
 
@@ -79,6 +80,8 @@ def test_fetch_choices():
     assert 0 < a >= b >= c > d
 
 
+import os
+
 @pytest.fixture
 def app():
     app = create_app()
@@ -87,15 +90,24 @@ def app():
             "TESTING": True,
         }
     )
+    if not does_primary_or_secondary_exist():
+        log.info("Feeding initial choices")
+        compile_choices()
     yield app
-
 
 @pytest.fixture()
 def client(app):
-    return app.test_client()
-
+    client = app.test_client()
+    # wait for the job to start
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        while not COMPILEPID_FILE.exists():
+            log.info("Waiting for job to start. Please wait...")
+            time.sleep(1)
+    return client
 
 def test_views(client):
+    
+    is_main = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
     now = datetime.now()
     resp = client.get("/")
     assert resp.status_code == 200

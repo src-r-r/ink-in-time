@@ -1,0 +1,14 @@
+Hi, you have an upcoming meeting with %(organizer_cn)s of %(organization_name).
+
+When: %(human_start)s
+Duration: %(human_duration)s
+Timezone: %(participant_email)s
+
+The meeeting is at the following URL:
+
+            %(meeting_link)s
+
+---
+
+This meeting has been sent by the Ink-in-time Scheduler
+https://github.com/srrc-r-r/ink-in-time

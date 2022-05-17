@@ -1,7 +1,7 @@
 import sqlite3
 from calendar import month_name
 from pathlib import Path
-from .config import config
+from .config import config, COMPILEPID_FILE
 from .calendar import calblock_choices, fetch_calblocks
 from .timespan import TimeSpan
 from datetime import timedelta, datetime
@@ -102,6 +102,11 @@ IS_PRIMARY_FREE = f"""
     WHERE
         tbl='primary' AND
         state='{STATE_FREE}'
+"""
+
+DOES_PRIMARY_OR_SECONDARY_EXIST = f"""
+    SELECT COUNT(*)
+    FROM {CHOICES_PRIMARY}, {CHOICES_SECONDARY}
 """
 
 UPDATE_PRIMARY_LAST_RUN = f"""
@@ -264,20 +269,28 @@ def get_lastrun_primary() -> arrow.Arrow:
     # already set to utc! :-)
     return arrow.get(int(timestamp))
 
-def _bool_query(QUERY, TRUE_RES=1):
+def _bool_query(QUERY, TRUE_RES=1, equality="is_eq"):
     conn = get_db()
     curs = conn.cursor()
     log.debug(QUERY)
     curs.execute(QUERY)
     result = curs.fetchone()
     conn.close()
-    return int(result[0]) == TRUE_RES
+    if equality == "is_eq":
+        return int(result[0]) == TRUE_RES
+    if equality == "is_gt":
+        return int(result[0]) > TRUE_RES
+    if equality == "is_ge":
+        return int(result[0]) >= TRUE_RES
 
 def is_primary_locked():
     return _bool_query(IS_PRIMARY_LOCKED)
 
 def is_primary_free():
     return _bool_query(IS_PRIMARY_FREE)
+
+def does_primary_or_secondary_exist():
+    return _bool_query(DOES_PRIMARY_OR_SECONDARY_EXIST, 0, equality="is_gt")
 
 def duplicate_primary_to_secondary():
     conn = get_db()
@@ -317,14 +330,14 @@ def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
         for cb in fetch_calblocks(d, inittime):
             start_utc = A(cb.start).to("UTC")
             end_utc = A(cb.end).to("UTC")
-            if start_utc.tzinfo != cb.start.tzinfo:
-                log.debug("  (converted start %s -> %s)", cb.end.tzinfo, end_utc.tzinfo)
-            if end_utc.tzinfo != cb.end.tzinfo:
-                log.debug("  (converted end %s -> %s)", cb.end.tzinfo, end_utc.tzinfo)
+            # if start_utc.tzinfo != cb.start.tzinfo:
+                # log.debug("  (converted start %s -> %s)", cb.end.tzinfo, end_utc.tzinfo)
+            # if end_utc.tzinfo != cb.end.tzinfo:
+                # log.debug("  (converted end %s -> %s)", cb.end.tzinfo, end_utc.tzinfo)
             startstamp = int(start_utc.timestamp())
             endstamp = int(end_utc.timestamp())
             values = (key, startstamp, endstamp)
-            log.debug("  -> %s", values)
+            # log.debug("  -> %s", values)
             curr.execute(INSERT_CHOICE_PRIMARY, values)
         conn.commit()
     curr.close()
@@ -337,7 +350,9 @@ def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
     # duplicate the primary table to the secondary table.
     log.debug("Duplicating primary table...")
     duplicate_primary_to_secondary()
+    # It must be talking about us! Get rid of the file.
     log.debug("Done!")
+    COMPILEPID_FILE.unlink(missing_ok=True)
 
 
 def normalize_record(record):
@@ -357,6 +372,10 @@ def localize_normalize_record(record, tzinfo):
 
 
 def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
+
+    if not block:
+        for appointment in config.appointments:
+            yield appointment
 
     SELECT_BY_BLOCK = SELECT_BY_BLOCK_PRIMARY
     SELECT_BY_BLOCK_AND_DATE = SELECT_BY_BLOCK_AND_DATE_PRIMARY
@@ -379,7 +398,7 @@ def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
     # If any other date params are given, construct
     # the date restriction
     A = arrow.get
-    start = A(year=year, month=month, day=day, tzinfo=tzinfo)
+    start = A(year=year, month=month or 1, day=day or 1, tzinfo=tzinfo)
     if day:
         end = start.shift(days=+1)
     elif month:
@@ -401,7 +420,7 @@ def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
     curs.execute(SELECT_BY_BLOCK_AND_DATE, (block, start_ts, end_ts))
     record = curs.fetchone()
     while record:
-        log.debug(record)
+        # log.debug(record)
         yield localize_normalize_record(record, tzinfo)
         record = curs.fetchone()
     conn.close()
@@ -411,31 +430,36 @@ def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
 def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo=None):
 
     if not block:
-        for (key, value) in get_appts().items():
+        for (key, appt) in config.appointments.items():
             yield {
                 "selection": "block",
                 "block": None,
                 "value": key,
-                "label": value["label"] + " (" + value["duration"] + " min.)",
+                "label": appt.label,
+                "icon": appt.icon,
+                "meta": appt,
             }
         return
 
     log.info("Fetching choices with tz=%s", tzinfo)
     for (block, start, end) in fetch_choices(block, year, month, day, tzinfo):
-        if year and month and day:
+        if day:
             value = TimeSpan(start, end).to_json()
             log.debug(value)
             yield {
                 "selection": "time",
                 "block": block,
                 "value": value,
+                "label": None,
+                "icon": None,
             }
-        elif year and month:
+        elif month:
             yield {
                 "selection": "day",
                 "block": block,
                 "value": start.day,
                 "label": start.day,
+                "icon": None,
             }
         elif year:
             yield {
@@ -443,11 +467,21 @@ def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo
                 "block": block,
                 "value": start.month,
                 "label": list(month_name)[start.month],
+                "icon": None,
             }
-        else:
+        elif block:
             yield {
                 "selection": "year",
                 "block": block,
                 "value": start.year,
                 "label": start.year,
+                "icon": None
+            }
+        else:
+            yield {
+                "selection": "year",
+                "block": None,
+                "value": block.id,
+                "label": block.label,
+                "icon": block.icon,
             }
