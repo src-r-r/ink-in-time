@@ -313,5 +313,8 @@ def test_sending_email():
     )
     assert ar.smtp()
 
+    ics = ar.create_ics("organizer")
+    import ipdb; ipdb.set_trace()
+
     resp = ar.send_organizer_email()
     assert not resp
