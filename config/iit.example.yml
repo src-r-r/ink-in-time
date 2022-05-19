@@ -1,0 +1,154 @@
+scheduling:
+  # Your timezone.
+  my_timezone: "US/Pacific"
+  # List of appointments to offer the user.
+  # Icon can include HTML since it's marked as safe.
+  appointments:
+    "30min":
+      label: Half an Hour
+      time: 30
+      icon: <i class="bi bi-circle-half"></i>
+    "60min":
+      label: 1 Hour
+      time: 60
+      icon: <i class="bi bi-circle-fill"></i>
+  # Grace period in timedelta dict
+  grace_period:
+    hours: 6
+  # When your workday starts and ends.
+  # the parameters are given as `timedelta` kwargs
+  workday:
+    start:
+      hour: 6
+      minute: 30
+    end:
+      hour: 18
+      minute: 00
+  # How far ahead to plan
+  # the parameters are given as `timedelta` kwargs
+  view_duration:
+    days: 60
+database:
+  # sqlite file
+  # Path variables are resolved
+  # Directories are created if not found.
+  # proj_dir=project directory
+  path: "{proj_dir}/db/inkintime.db"
+  # How often to run the block compilation job.
+  # Given in `timedelta` format as a dict
+  compilation_interval:
+    minutes: 30
+
+# List of calendars to include to automatically
+# detect when you're free/busy
+# These are ICS links that you typically copy from
+# calendar share settings.
+calendars:
+  free:
+  blocked:
+    # By default this is the mock calendar for the test suite.
+    # You may want to change this.
+    - "http://localhost:5002/ics/maybe-their.ics/"
+organizer:
+  # required
+  cn: <Your Own Name>
+  # Email attached to both the ics event and the email message
+  email: <Your own email>
+  # optional, but makes you look important 😆
+  role: ""
+email:
+  # A class that will generate a meeting link.
+  # Currently pretty rudimentary, but you can plug your own in
+  # if desired.
+  meeting_link_generator: "src.meetinggen.jitsi:JitsiGenerator"
+
+  # Separate subjects for organizer and participant
+  organizer:
+    subject: "Upcoming meeting with {{ participant_cn }}"
+  participant:
+    subject: "Upcoming meeting with {{ organizer_cn }}"
+  # NOTE: The default value is a test email server.
+  # MAKE SURE TO SET THIS TO YOUR OWN EMAIL SETTINGS
+  server:
+    host: localhost
+    port: 1025
+    username: calendar-scheduling
+    password: supersecret
+# optionally, any variables you want passed
+# in to templates can be specified below.
+# Keep it flat, remember we're using '%'
+# replacements.
+variables:
+  organization_name: My Cool Company
+  tagline: We're so cool!
+ics:
+  # Can be templated with jinja2-style vars.
+  # Variables that are passed in include:
+  # - organizer_cn
+  # - organizer_email
+  # - organizer_role
+  # - organizer_timezone
+  # - participant_cn
+  # - participant_email
+  # - participant_timezone
+  # - human_start
+  # - raw_start
+  # - human_end
+  # - raw_end
+  # - notes
+  # - block_key
+  # - block_label
+  # - raw_duration
+  # - human_duration
+  # - meeting_link
+  summary: "Upcoming Meeting between {{ organizer_cn }} and {{ participant_cn }}"
+  # See https://arrow.readthedocs.io/en/latest/#supported-tokens
+  # for format
+  dt_format:
+    start: "dddd MMMM M YYYY, HH:mm p"
+    end: "HH:mm a ZZZ"
+  # Optional -- the `humanize` function to call for durations
+  humanize_function: "precisedelta"
+  # Arguments for constructing the ical
+  # Probably should not be changed,except for "prodid"
+  # See https://icalendar.readthedocs.io/en/latest/usage.html#example
+  # TODO: currently not read; need to implement
+  meta:
+    prodid: "-//Ink In Time Scheduler//mxm.dk//"
+    version: 2.0
+    
+  default_recipients:
+    - user@localhost
+site:
+  # URL to get back to the "main site"
+  # Completely optional; if ommitted, a
+  # backref will not be displayed.
+  backref:
+    url: http://localhost
+    label: Back to Localhost
+
+# The ol' faithful Python logging dict.
+logging:
+  version: 1
+  disable_existing_loggers: true
+  formatters:
+    standard:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    error:
+      format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
+    mine:
+      format: "[%(levelname)s] %(name)s %(message)s"
+
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: mine
+      stream: ext://sys.stdout
+
+  loggers:
+    "faker.factory":
+      level: INFO
+  root:
+    level: DEBUG
+    handlers: [console]
