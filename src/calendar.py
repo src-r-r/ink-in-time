@@ -210,7 +210,8 @@ def construct_collection():
 
 
 def top_of_hour(when: datetime):
-    return when.replace(hour=when.hour+1, minute=0)
+    arr = arrow.get(when)
+    return arr.shift(hours=+1).replace(minute=0, second=0)
 
 
 def awareness(unaware: T.Union[datetime, time], tz=config.my_timezone) -> T.Union[datetime, time]:

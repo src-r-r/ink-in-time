@@ -5,7 +5,8 @@ import jinja2
 import logging.config
 import logging
 import pytz
-from .config import config, COMPILEPID_FILE
+from .core import COMPILEPID_FILE
+from .config import config
 from .iit_app import create_app
 
 log = logging.getLogger(__name__)

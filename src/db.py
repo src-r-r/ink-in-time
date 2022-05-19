@@ -1,7 +1,8 @@
 import sqlite3
 from calendar import month_name
 from pathlib import Path
-from .config import config, COMPILEPID_FILE
+from .config import config
+from .core import COMPILEPID_FILE
 from .calendar import calblock_choices, fetch_calblocks
 from .timespan import TimeSpan
 from datetime import timedelta, datetime
@@ -366,8 +367,8 @@ def normalize_record(record):
 def localize_normalize_record(record, tzinfo):
     # Convert the int value to a localized datetime
     (block, start, end) = normalize_record(record)
-    start = start.to(tzinfo)
-    end = end.to(tzinfo)
+    start = start.to(str(tzinfo))
+    end = end.to(str(tzinfo))
     return (block, start, end)
 
 
@@ -429,9 +430,9 @@ def fetch_choices(block, year=None, month=1, day=1, tzinfo=None):
 
 
 def fetch_more_human_choices(block=None, year=None, month=None, day=None, tzinfo=None):
-    log.debug("=> %s/%s/%s/%s", block, year, month, day)
+    # log.debug("=> %s/%s/%s/%s", block, year, month, day)
     for (blockval, start, end) in fetch_choices(block, year, month, day, tzinfo):
-        log.debug("  <= %s, %s, %s", block, start, end)
+        # log.debug("  <= %s, %s, %s", block, start, end)
         if day:
             value = TimeSpan(start, end).to_json()
             log.debug(value)

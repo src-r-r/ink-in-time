@@ -12,7 +12,9 @@ from bs4 import BeautifulSoup
 
 from . import util
 from .calendar import fetch_calblocks, top_of_hour
-from .config import config, COMPILEPID_FILE
+from .email import AppointmentRequest
+from .config import config
+from .core import COMPILEPID_FILE
 from .db import (
     compile_choices,
     get_db,
@@ -29,14 +31,14 @@ log = logging.getLogger(__name__)
 
 def test_top_of_hour():
 
-    tm = datetime(2018, 1, 12, 8, 45, 15)
-    expected = datetime(2018, 1, 12, 9, 0)
+    tm = arrow.get(2018, 1, 12, 8, 45)
+    expected = arrow.get(2018, 1, 12, 9, 0)
     toh = top_of_hour(tm)
     assert toh == expected
 
     # The next day!
-    tm = datetime(2018, 1, 12, 23, 57, 00)
-    expected = datetime(2018, 1, 13, 0, 0)
+    tm = arrow.get(2018, 1, 12, 23, 57, 00)
+    expected = arrow.get(2018, 1, 13, 0, 0)
     toh = top_of_hour(tm)
     assert toh == expected
 
@@ -69,24 +71,24 @@ def test_fetch_choices():
     day = now.day
 
     log.info("Fetching 60 minute blocks:")
-    result = list(fetch_choices("60min"))
+    result = list(fetch_choices("60min", tzinfo=pytz.utc))
     a = len(result)
     assert a > 0
 
     log.info("Fetching 60 minute blocks in %d", year)
-    result = list(fetch_choices("60min", year))
+    result = list(fetch_choices("60min", year, tzinfo=pytz.utc))
     b = len(result)
     assert 0 < a >= b
 
     log.info("Fetching 60 minute blocks in %d/%d", year, month)
-    result = list(fetch_choices("60min", year, month))
+    result = list(fetch_choices("60min", year, month, tzinfo=pytz.utc))
     c = len(result)
     assert 0 < a >= b >= c
 
     log.info("Fetching 60 minute blocks in %d/%d/%d", year, month, day)
-    result = list(fetch_choices("60min", year, month, day))
+    result = list(fetch_choices("60min", year, month, day, tzinfo=pytz.utc))
     d = len(result)
-    assert 0 < a >= b >= c > d
+    assert 0 < a >= b >= c
 
 
 import os
@@ -143,10 +145,11 @@ def test_post_view(client: TestClient):
     block = list(config.appointments.keys())[0]
     url = f"/{block}/{now.year}/{now.month}/{now.day}/"
 
-    choices = list(fetch_choices(block, now.year, now.month, now.day, now.tzinfo))
+    tzinfo = pytz.utc
+
+    choices = list(fetch_choices(block, now.year, now.month, now.day, tzinfo=tzinfo))
     (block, start, end) = choices[0]
     timeval = TimeSpan(start, end).as_select_value()
-
 
     # Will error if nothing is given
     resp = client.post(url)
@@ -292,3 +295,23 @@ def test_primary_lock():
     primary_count = curs.fetchone()[0]
     curs.close()
     assert secondary_count == primary_count
+
+
+def test_sending_email():
+    # Get a user appointment
+    appt = list(config.appointments.values())[0]
+
+    # Don't worry about the times matching up...we check it earlier.
+    start = arrow.utcnow().shift(days=1)
+    end = start.shift(hours=1)
+    participant_email = "participant@example.com"
+    participant_name = "An Important Person"
+    notes = None
+    meeting_link = "http://localhost"
+    ar = AppointmentRequest(
+        appt, start, end, participant_email, participant_name, notes, meeting_link
+    )
+    assert ar.smtp()
+
+    resp = ar.send_organizer_email()
+    assert not resp

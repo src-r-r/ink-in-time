@@ -1,0 +1,14 @@
+Hi, you have an upcoming meeting with {{ organizer_cn }} of {{ organization_name }}.
+
+When: {{ human_start }}
+Duration: {{ human_duration }}
+Timezone: {{ participant_timezone }}
+
+The meeting is at the following URL:
+
+            {{ meeting_link }}
+
+---
+
+This meeting has been sent by the Ink-in-Time Scheduler
+https://github.com/srrc-r-r/ink-in-time

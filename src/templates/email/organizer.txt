@@ -1,0 +1,17 @@
+Hi, you have an upcoming meeting with {{ participant_cn }} ({{ participant_email}}).
+
+When: {{ human_start }}
+Duration: {{ human_duration }}
+Timezone: {{ organizer_timezone }}
+
+The meeting is at the following URL:
+
+            {{ meeting_link }}
+
+{% if notes %}
+---
+
+Additional Notes:
+
+{{ notes }}
+{% endif %}

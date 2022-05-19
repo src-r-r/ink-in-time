@@ -13,11 +13,13 @@ from multiprocessing import Process
 from pathlib import Path
 import logging
 
-from .config import config, COMPILEPID_FILE, MOCK_ICS_DIR
+from .config import config
+from .core import COMPILEPID_FILE, MOCK_ICS_DIR
 from .checker import check_config
 from .db import fetch_more_human_choices
 from .calendar import calblock_choices
 from .db import compile_choices, get_lastrun_primary
+from .email import AppointmentRequest
 
 log = logging.getLogger(__name__)
 
@@ -172,7 +174,7 @@ def create_app(config_filename=None):
             day,
             tzinfo=tzobj,
         ):
-            log.debug(choice)
+            # log.debug(choice)
             if choice["selection"] not in ("time",) and choice["value"] in _values:
                 continue
             choices.append(choice)
@@ -281,9 +283,17 @@ def create_app(config_filename=None):
             add_error(context, "form_email", "null")
         if not email:
             add_error(context, "form_name", "null")
-        
+
         if context["has_errors"]:
             return show_appointment_scheduler(block, year, month, day, context)
+        
+        (start_utc, end_utc) = time.split(";")
+        tz = extract_tz(request)[1] or pytz.utc
+        start = arrow.get(int(start_utc), tzinfo=tz)
+        end = arrow.get(int(end_utc), tzinfo=tz)
+        appt = config.appointments.get(block)
+        meeting_link = config.MeetingGenClass().generate()
+        req = AppointmentRequest(appt, start, end, email, name, details, meeting_link)
         return render_template(str(CONFIRM_TEMPLATE), **context)
 
     return app

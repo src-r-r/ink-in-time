@@ -3,8 +3,10 @@ import socket
 import pytz
 import humanize
 from datetime import timedelta, time
+import importlib
 
 def check_config(config):
+    from .core import IS_EMAIL
     # Scheduling
     assert "scheduling" in config
     assert "my_timezone" in config["scheduling"]
@@ -31,8 +33,18 @@ def check_config(config):
     assert "cn" in config["organizer"]
     assert "email" in config["organizer"]
 
+    assert IS_EMAIL(config["organizer"]["email"])
+
     # Email
     assert "email" in config
+    assert "meeting_link_generator" in config["email"]
+    cls = config["email"]["meeting_link_generator"]
+    module_name, class_name = cls.split(":", 1)
+    _mod = importlib.import_module(module_name)
+    MeetingGenClass = getattr(_mod, class_name)
+    assert MeetingGenClass is not None
+    assert hasattr(MeetingGenClass, "generate")
+    assert callable(MeetingGenClass.generate)
     assert "server" in config["email"]
     assert "organizer" in config["email"]
     assert "subject" in config["email"]["organizer"]

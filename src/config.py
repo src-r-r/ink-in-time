@@ -11,24 +11,16 @@ import logging.config
 import pytz
 from .checker import check_config
 from .appointment import Appointment
+import importlib
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
+from .core import PROJ_DIR, CONFIG_YML
+
 LOGNAME = __name__
-
-HERE = Path(__file__).parent.resolve()
-PROJ_DIR = HERE.parent
-CONFIG_DIR = PROJ_DIR / "config"
-CONFIG_YML = CONFIG_DIR / "iit.yml"
-EMAIL_TEMPLATE = CONFIG_DIR / "email_template.txt"
-COMPILEPID_FILE : Path = PROJ_DIR / ".compilepid"
-
-MOCK_DIR = PROJ_DIR / "mock_data"
-MOCK_ICS_DIR = MOCK_DIR / "ics"
-
 class Config:
 
     def __init__(self, yml=CONFIG_YML):
@@ -62,6 +54,11 @@ class Config:
         self.free_calendars = self._cfg["calendars"]["free"]
         self.blocked_calendars = self._cfg["calendars"]["blocked"]
 
+        cls = self._cfg["email"]["meeting_link_generator"]
+        module_name, class_name = cls.split(":")
+        _mod = importlib.import_module(module_name)
+        self.MeetingGenClass = getattr(_mod, class_name)
+
         self.organizer_cn = self._cfg["organizer"]["cn"]
         self.organizer_email = self._cfg["organizer"]["email"]
         self.organizer_role = self._cfg["organizer"].get("role")
@@ -69,6 +66,7 @@ class Config:
         self.email_server = self._cfg["email"]["server"]
         self.email_organizer_subject = self._cfg["email"]["organizer"]["subject"]
         self.email_participant_subject = self._cfg["email"]["participant"]["subject"]
+        
         self.LOGGING = self._cfg["logging"]
 
         self.ics_summary = self._cfg["ics"]["summary"]
@@ -82,6 +80,8 @@ class Config:
         if "site" in self._cfg and "backref" in self._cfg["site"]:
             self.backref_url = self._cfg["site"]["backref"]["url"]
             self.backref_label = self._cfg["site"]["backref"]["label"]
+        
+        self.variables = self._cfg.get("variables", {})
     
     def get_working_hours(self, ref_dt : arrow.Arrow):
         """Get the working hours for a given datetime
