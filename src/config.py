@@ -20,6 +20,9 @@ except ImportError:
 
 from .core import PROJ_DIR, CONFIG_YML
 
+
+project_name = "Ink In Time"
+
 LOGNAME = __name__
 class Config:
 

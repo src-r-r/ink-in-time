@@ -72,7 +72,12 @@ def check_config(config):
 
     e = config["email"]["server"]
     print("Testing email connection:")
-    s = socket.socket()
-    s.connect((e["host"], e["port"]))
-    print("[SUCCESS]")
-    s.close()
+    try:
+        s = socket.socket()
+        s.connect((e["host"], e["port"]))
+        print("[SUCCESS]")
+        s.close()
+    except ConnectionRefusedError as exc:
+        nocreds = dict([(k, v) for (k, v) in e.items() if k not in ("username, password")])
+        raise RuntimeError(f"Could not connect to {nocreds}: {exc}")
+

@@ -1,2 +1,2 @@
 #!/bin/bash
-python -m smtpd -c DebuggingServer -n localhost:${SMTP_PORT}
+python3 -m smtpd -c DebuggingServer -n 0.0.0.0:1025

@@ -1,20 +1,32 @@
-from main import app_factory
-from config import project_name
+from .iit_app import create_app
+from .core import PROJ_ENV, COMPILEPID_FILE
+from .config import project_name, config
+from pathlib import Path
 import os
+import environ
 
-try:
-    config_obj_path = os.environ['FLASK_CONFIG_DEFAULT']
-except KeyError:
-    print(
-        "Please, provide the environment variable FLASK_CONFIG_DEFAULT. "
-        "It tells the application which configuration class to load.")
-    exit()
+env = environ.Env()
 
-app = app_factory(config_obj_path, project_name)
+FLASK_DOTENV = env.bool("FLASK_DOTENV", False)
+
+if FLASK_DOTENV:
+    if Path(PROJ_ENV).exists():
+        env.read_env(PROJ_ENV)
+
+    # Or try loading from the execution path
+    if Path(".env").exists():
+        env.read_env(PROJ_ENV)
 
 
 if __name__ == '__main__':
-    _debug = app.config.get('DEBUG', False)
+    if COMPILEPID_FILE.exists() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        msg = """pid file %s exists. This could mean the process didn't stop properly (or it's running after server exited). Please check for PID %s and kill it if desired, or remove the pidfile.
+    """
+        raise RuntimeError(msg % (COMPILEPID_FILE, COMPILEPID_FILE.read_text()))
+
+    app = create_app(project_name=project_name)
+    _debug = env.bool("FLASK_DEBUG", False)
+    # _debug = app.config.get('DEBUG', False)
 
     kwargs = {
         'host': os.getenv('FLASK_HOST', '0.0.0.0'),
@@ -24,7 +36,9 @@ if __name__ == '__main__':
         **app.config.get('SERVER_OPTIONS', {})
     }
 
-    from extensions import io
+    from .extensions import SocketIO
 
-    io.run(app, **kwargs)
+    app.run(**kwargs)
+
+    # SocketIO(app).run(app, **kwargs)
     

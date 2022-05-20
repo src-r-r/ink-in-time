@@ -14,22 +14,96 @@ Appointment scheduling/booking application that aims to be super-simple, and ope
 
 ## Set Up
 
-Copy `config/iit-example.yml` to `config/iit.yml`.
+### Non-Docker
+
+Copy `config/iit-example.yml` to `config/iit.yml`. Modify it accordingly. There 
+are many options that are required. If something isn't configured correctly
+the service won't start.
 
 Install packages:
+
+```shell
+> pypi install
+```
+
+Run the server.
 
 ```shell
 > pypi run python -m src.main
 ```
 
-Run the server. If the configuration is incorrect, the server won't start.
+You may also provide custom configs by provding the `IIT_YML` environment variable:
 
+```shell
+> IIT_YML='/path/to/my/iit.yml' pypi run python -m src.main
+```
 
+If an `IIT_YML` file is not provide it will poll the following paths to
+find the first available config:
+
+- `/app/iit.yml` (**NOTE**: for docker installs ONLY!)
+- `/etc/ink-in-time/iit.yml`
+- `$HOME/.ink-in-time/config/iit.yml`
+- `$PROJ_DIR/config/iit.yml`
+
+Additional environment variables that may be of interest:
+
+<dl>
+  <dt><code>FLASK_DOTENV</code></dt>
+  <dd>Override the current environment with the <code>.env</code> file</dd>
+  <dt><code>FLASK_DEBUG</code></dt>
+  <dd>Run flask in DEBUG mode</dd>
+</dl>
+
+### Docker
+
+This is meant for projects that want to pop in the Ink In Time project
+to their existing cluster/infrastructure.
+
+Create a new `iit.yml` file using the same `yml` template as for the non-docker setup. This will be your service configuration.
+
+Add the following to your existing `docker-compose.yml`
+
+```yml
+services:
+  iit:
+    image: damngoodtech/ink-in-time:latest
+    # This is required to provide a configuration
+    volumes:
+      - "./iit.yml:/app/iit.yml"
+    ports:
+      - "5000:5000" # exposes the port to the host
+  
+  web: # or whatever your "main" server service is
+    depends:
+      - iit
+```
+
+Now just configure your server to let some path like `/schedule` refer
+to port `5000` and you're golden!
+
+### Overriding templates
+
+Because this service uses jinja2 for templating, you can absolutely
+override any template you want!
+
+To do this, copy the `/app/templates` directory (from the docker container) to a local file on the host, then add the directory as a volume:
+
+```yml
+services:
+  # ...
+  iit:
+    # ...
+    volumes:
+      - "./my-awesome-templates:/app/templates"
+      # ...
+```
 ## Testing
 
 ### Running the tests
 
-> Hint: it's **HIGHLY** recommended you pull from an ics mock server. See below.
+> Hint: if you want to test the calendar blocking feature, it's **HIGHLY**
+> recommended you pull from an ics mock server. See below.
 
 ```
 > pypi run pytest src/tests.py

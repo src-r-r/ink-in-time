@@ -1,19 +1,51 @@
 services:
   
+  # Debugging
   smtpdebug:
-    image: python:latest
+    build:
+      context: .
+      dockerfile: ./docker/smtpdebug/Dockerfile
     entrypoint: /start.sh
     ports:
-      - 1025:1025
+      - "1025:1025"
     environment:
       - SMTP_PORT=1025
     volumes:
       - ./docker/smtpdebug/start.sh:/start.sh
-  # flask:
-  #   image: python:latest
-  #   depends_on:
-  #     - smtpdebug
-  #   build:
-  #     dockerfile: ./docker/Dockerfile
-  #   volumes:
-  #     - ./src/:/app/src
+  
+  mockics:
+    entrypoint: /start.sh
+    build:
+      context: .
+      dockerfile: ./docker/mock_ics/Dockerfile
+    ports:
+      - 5002:5002
+    volumes:
+      - ./docker/mock_ics/start.sh:/start.sh
+  debugiit:
+    build:
+      context: .
+      dockerfile: ./docker/damngoodtech/Dockerfile
+    ports:
+      - "5000:5000"
+    links:
+      - mockics
+      - smtpdebug
+    depends_on:
+      - mockics
+      - smtpdebug
+    entrypoint: /entrypoint.sh
+    volumes:
+      - ./config/iit.yml:/app/iit.yml
+    
+  # No debugging
+  iit:
+    build:
+      context: .
+      dockerfile: ./docker/damngoodtech/Dockerfile
+    ports:
+      - "5000:5000"
+    entrypoint: /entrypoint.sh
+    volumes:
+      - ./config/iit.yml:/app/iit.yml
+      - ./docker/mock_ics/start.sh:/start.sh

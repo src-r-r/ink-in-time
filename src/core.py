@@ -3,6 +3,9 @@ import os
 from pathlib import Path
 
 from .coreutil import first_config
+from environ import Env
+
+env = Env()
 
 # regular expressions
 
@@ -23,11 +26,17 @@ HOME_DIR = Path("~").resolve()
 # Project-level files
 
 PROJ_DIR = HERE.parent
+PROJ_ENV = HERE / ".env"
 HOME_CFG_DIR = HOME_DIR / ".ink-in-time" / "config"
 PROJ_CFG_DIR = PROJ_DIR / "config"
 
+# Docker-specific paths
+DOCKER_APP = env.path("PROJECT_DIR", PROJ_DIR)
+
+# Config will first try the file pointed at by
+# `IIT_YML` (if it exists).
 CONFIG_YML = first_config(
-    ROOT, # Used for docker
+    DOCKER_APP, # Used for docker
     ETC_IIT_DIR, # System installs
     HOME_CFG_DIR, # for user installations
     PROJ_CFG_DIR, # Typically for development

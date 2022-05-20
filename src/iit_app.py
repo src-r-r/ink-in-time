@@ -135,7 +135,7 @@ ICS_MIME = "text/calendar"
 # where the magic happens!
 
 
-def create_app(config_filename=None):
+def create_app(config_filename=None, config_obj_path=None, project_name=None):
 
     # create the application
     app = IitFlask(__name__)

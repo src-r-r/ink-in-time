@@ -35,6 +35,8 @@ arrow = "*"
 icalendar = "*"
 faker = "*"
 beautifulsoup4 = "*"
+python-environ = "*"
+cachetools = "*"
 
 [dev-packages]
 

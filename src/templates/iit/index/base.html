@@ -29,11 +29,11 @@
   <body>
 
     <section id="header">
-      <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
           {% if cfg.backref_url %}
             <div class="navbar-brand">
-              <a href="{{ cfg.backref_url }}" class="btn btn-outline-dark">
+              <a href="{{ cfg.backref_url }}" class="btn btn-outline-light">
                 <i class="bi bi-arrow-left"></i>
                 <span>{{ cfg.backref_label }}</span>
               </a>
@@ -44,7 +44,7 @@
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 py-3">
               {% block nav_links %}{% endblock %}
             </ul>
           </div>
@@ -56,6 +56,10 @@
     <h1 class="title">{% block title %}{% endblock %}</h1>
 
     <main>{% block main %}{% endblock %}</main>
+
+    <footer class="footer me-auto mb-2 mb-lg-0 bg-light">
+      {% include "iit/inc/sections/footer.html" %}
+    </footer>
 
     <!-- Optional JavaScript; choose one of the two! -->
 
