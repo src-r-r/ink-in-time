@@ -92,11 +92,10 @@ class AppointmentRequest:
         event.add("summary", self.get_summary())
         event.add("dtstart", self.start.datetime)
         event.add("dtend", self.end.datetime)
+        event.add("dtstamp", self.start.datetime)
         event["organizer"] = self.create_event_organizer()
         event["location"] = vText(self.meeting_link)
         event["uid"] = _uuid().hex
-        event["prodid"] = "-//Ink In Time Scheduler//mxm.dk//"
-        event["version"] = "2.0"
         event["description"] = self.get_participant_content()
         if part_or_org == "organizer":
             event["description"] = self.get_organizer_content()
@@ -104,6 +103,8 @@ class AppointmentRequest:
 
     def create_ics(self, part_or_org):
         cal = Calendar()
+        cal["prodid"] = "-//Ink In Time Scheduler//mxm.dk//"
+        cal["version"] = "2.0"
         cal.add("attendee", f"MAILTO:{self.participant_email}")
         cal.add_component(self.create_ics_event(part_or_org))
         return cal
@@ -123,7 +124,7 @@ class AppointmentRequest:
         em["Subject"] = Template(cfg.email_participant_subject).render(
             self.get_format_kwargs()
         )
-        em["From"] = cfg.organizer_email
+        em["From"] = cfg.email_from
         em["To"] = self.participant_email
         em.set_content(self.get_participant_content())
         return em
@@ -133,7 +134,7 @@ class AppointmentRequest:
         em["Subject"] = Template(cfg.email_organizer_subject).render(
             self.get_format_kwargs()
         )
-        em["From"] = cfg.organizer_email
+        em["From"] = cfg.email_from
         em["To"] = cfg.organizer_email
         em.set_content(self.get_organizer_content())
         return em

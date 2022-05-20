@@ -4,7 +4,7 @@
   {% include choice_template %}
   {% else %}
   <a
-    href="{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}"
+    href="{{cfg.url_base}}{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}"
     class="btn btn-lg btn-outline-primary"
   >
     <p class="fs-1">{{ item.label }}</p>

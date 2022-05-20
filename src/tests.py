@@ -34,6 +34,7 @@ config.dbpath = PROJ_CFG_DIR / "test.db"
 
 log = logging.getLogger(__name__)
 
+
 def test_top_of_hour():
 
     tm = arrow.get(2018, 1, 12, 8, 45)
@@ -320,7 +321,13 @@ def test_sending_email():
     notes = None
     meeting_link = "http://localhost"
     ar = AppointmentRequest(
-        appt, start, end, participant_email, participant_name, notes, meeting_link
+        appt,
+        start,
+        end,
+        participant_email,
+        participant_name,
+        notes,
+        meeting_link,
     )
     assert ar.smtp()
 

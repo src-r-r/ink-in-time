@@ -229,10 +229,15 @@ def create_app(
             # Previous: day, current: time selection
             back_url = f"/{block}/{year}/{month}/{tzqs}"
             back_label = f"Choose Day"
+        
+        if back_url and (config.url_base) and not (back_url.startswith(config.url_base)):
+            back_url = config.url_base + back_url
+
 
         month_name = None
         if month:
             month_name = list(MN)[month]
+        
 
         context = {
             "timezones": [

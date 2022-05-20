@@ -13,7 +13,7 @@
 </div>
 
 <div class="container">
-    <p><a href="/?timezone={{ timezone }}" class="btn btn-primary btn-large">Schedule another meeting</a></p>
+    <p><a href="{{ cfg.url_base }}/?timezone={{ timezone }}" class="btn btn-primary btn-large">Schedule another meeting</a></p>
     {% if cfg.backref_url %}
       <div>
         <a href="{{ cfg.backref_url }}" class="btn btn-secondary">

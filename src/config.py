@@ -66,6 +66,7 @@ class Config:
         self.organizer_email = self._cfg["organizer"]["email"]
         self.organizer_role = self._cfg["organizer"].get("role")
 
+        self.email_from = self._cfg["email"]["from"]
         self.email_server = self._cfg["email"]["server"]
         self.email_organizer_subject = self._cfg["email"]["organizer"]["subject"]
         self.email_participant_subject = self._cfg["email"]["participant"]["subject"]
@@ -77,6 +78,10 @@ class Config:
         self.ics_dt_format_end = self._cfg["ics"]["dt_format"]["end"]
 
         self._humanize_func = self._cfg["ics"].get("humanize_function", "precisedelta")
+
+        self.url_base = "/"
+        if "site" in self._cfg and "url_base" in self._cfg["site"]:
+            self.url_base = self._cfg["site"]["url_base"]
 
         self.backref_url = None
         self.backref_label = None

@@ -4,6 +4,8 @@ import pytz
 import humanize
 from datetime import timedelta, time
 import importlib
+import logging
+log = logging.getLogger(__name__)
 
 def check_config(config):
     from .core import IS_EMAIL
@@ -37,6 +39,7 @@ def check_config(config):
 
     # Email
     assert "email" in config
+    assert "from" in config["email"]
     assert "meeting_link_generator" in config["email"]
     cls = config["email"]["meeting_link_generator"]
     module_name, class_name = cls.split(":", 1)
@@ -74,10 +77,14 @@ def check_config(config):
     print("Testing email connection:")
     try:
         s = socket.socket()
+        print("Connecting to host=%s, port=%d", e["host"], e["port"])
         s.connect((e["host"], e["port"]))
         print("[SUCCESS]")
         s.close()
     except ConnectionRefusedError as exc:
         nocreds = dict([(k, v) for (k, v) in e.items() if k not in ("username, password")])
         raise RuntimeError(f"Could not connect to {nocreds}: {exc}")
+    except socket.gaierror as gae:
+        nocreds = dict([(k, v) for (k, v) in e.items() if k not in ("username, password")])
+        raise RuntimeError(f"Could not connect to {nocreds}: {gae}")
 
