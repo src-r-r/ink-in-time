@@ -135,7 +135,11 @@ ICS_MIME = "text/calendar"
 # where the magic happens!
 
 
-def create_app(config_filename=None, config_obj_path=None, project_name=None):
+def create_app(
+    iit_config=None, config_filename=None, config_obj_path=None, project_name=None
+):
+
+    iit_config = iit_config or config
 
     # create the application
     app = IitFlask(__name__)
@@ -255,7 +259,7 @@ def create_app(config_filename=None, config_obj_path=None, project_name=None):
                     "label": back_label,
                 }
             },
-            "cfg": config,
+            "cfg": iit_config,
         }
 
         if _extra_conext:
@@ -267,6 +271,7 @@ def create_app(config_filename=None, config_obj_path=None, project_name=None):
 
     @app.route(STEPS[4], methods=[POST])
     def submit_complete(block, year=None, month=None, day=None):
+        (timezone, tzobj) = extract_tz(request)
         # Once the form has been submitted
         # construct the ics as an attachment
         # email both the user and the "owners"
@@ -275,7 +280,12 @@ def create_app(config_filename=None, config_obj_path=None, project_name=None):
         name = request.form.get("name")
         details = request.form.get("details")
 
-        context = {"cfg": config, "has_errors": False, "errors": {}}
+        context = {
+            "cfg": iit_config or config,
+            "has_errors": False,
+            "errors": {},
+            "timzeone": timezone,
+        }
 
         if not time:
             add_error(context, "form_time", "null")
@@ -286,14 +296,15 @@ def create_app(config_filename=None, config_obj_path=None, project_name=None):
 
         if context["has_errors"]:
             return show_appointment_scheduler(block, year, month, day, context)
-        
+
         (start_utc, end_utc) = time.split(";")
         tz = extract_tz(request)[1] or pytz.utc
         start = arrow.get(int(start_utc), tzinfo=tz)
         end = arrow.get(int(end_utc), tzinfo=tz)
-        appt = config.appointments.get(block)
-        meeting_link = config.MeetingGenClass().generate()
+        appt = iit_config.appointments.get(block)
+        meeting_link = iit_config.MeetingGenClass().generate()
         req = AppointmentRequest(appt, start, end, email, name, details, meeting_link)
+        req.send_emails()
         return render_template(str(CONFIRM_TEMPLATE), **context)
 
     return app

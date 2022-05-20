@@ -34,7 +34,7 @@ services:
     depends_on:
       - mockics
       - smtpdebug
-    entrypoint: /entrypoint.sh
+    # entrypoint: /entrypoint.sh
     volumes:
       - ./config/iit.yml:/app/iit.yml
     

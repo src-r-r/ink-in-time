@@ -65,10 +65,17 @@ class AppointmentRequest:
     def smtp(self):
         srv = cfg.email_server
         auth_keys = ("username", "password")
-        conn = dict([(k, v) for (k, v) in srv.items() if k not in auth_keys])
+        extra = ("use_ssl",)
+        conn_kw = dict([(k, v) for (k, v) in srv.items() if k not in auth_keys + extra])
         creds = dict([(k, v) for (k, v) in srv.items() if k in auth_keys])
-        log.debug("Connecting to %s", conn)
-        return smtplib.SMTP(**conn)
+        log.debug("Connecting to %s", conn_kw)
+        if srv.get("use_ssl", True):
+            conn = smtplib.SMTP_SSL(**conn_kw)
+        else:
+            conn = smtplib.SMTP(**conn_kw)
+        if creds:
+            conn.login(creds["username"], creds["password"])
+        return conn
 
     def get_summary(self):
         return Template(cfg.ics_summary).render(self.get_format_kwargs())
@@ -123,7 +130,9 @@ class AppointmentRequest:
 
     def create_organizer_email(self):
         em = EmailMessage()
-        em["Subject"] = cfg.email_organizer_subject % self.get_format_kwargs()
+        em["Subject"] = Template(cfg.email_organizer_subject).render(
+            self.get_format_kwargs()
+        )
         em["From"] = cfg.organizer_email
         em["To"] = cfg.organizer_email
         em.set_content(self.get_organizer_content())
@@ -137,9 +146,9 @@ class AppointmentRequest:
     def send_participant_email(self):
         log.debug("preparing participant email")
         msg = self.create_participant_email()
-        msg = attach_ics("participant", msg)
+        msg = self.attach_ics("participant", msg)
         with self.smtp() as s:
-            s.send_message(s)
+            resp = s.send_message(msg)
             log.debug("sent participant email with %s", resp)
             return resp
 

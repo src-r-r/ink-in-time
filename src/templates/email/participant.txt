@@ -10,5 +10,7 @@ The meeting is at the following URL:
 
 ---
 
-This meeting has been sent by the Ink-in-Time Scheduler
-https://github.com/srrc-r-r/ink-in-time
+This meeting has been sent by Ink-In Time, the open source,
+privacy-friendly scheduler.
+
+https://github.com/src-r-r/ink-in-time

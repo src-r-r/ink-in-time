@@ -5,7 +5,23 @@
 {% endblock title %}
 
 {% block main %}
-<div class="alert success">
+<div class="container">
+    <div class="alert alert-success">
+        <p>An email has been sent to <strong> {{ request.form.email }}</strong> from <strong>{{ cfg.organizer_email }}</strong>.</p>
+        <p>Please check the spam folder if you don't receive it within the next few minutes.</p>
+    </div>
+</div>
+
+<div class="container">
+    <p><a href="/?timezone={{ timezone }}" class="btn btn-primary btn-large">Schedule another meeting</a></p>
+    {% if cfg.backref_url %}
+      <div>
+        <a href="{{ cfg.backref_url }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left"></i>
+          <span>{{ cfg.backref_label }}</span>
+        </a>
+      </div>
+    {% endif %}
 </div>
 
 {% endblock main %}

@@ -1,5 +1,5 @@
 
-<form class="form">
+<form class="form"  method="POST">
     {% if has_errors %}
         <div class="alert error">
             <p>The form appears to have some errors</p>
@@ -39,9 +39,9 @@
         </div>
         <div class="form required{% if errors and errors.form_name %} error{% endif %}">
             <label for="email">Name</label>
-            <input type="email"
+            <input type="name"
                     class="form-control"
-                    name="email"
+                    name="name"
             />
             <p class="error">
                 {% if errors and errors.form_name == "null" %}
@@ -49,7 +49,7 @@
                 {% endif %}
             </p>
         </div>
-        <div class="form">
+        <div class="form"
             <label for="notes">Any Notes for the Meeting?</label>
             <textarea name="notes" type="text" class="form-control"></textarea>
         </div>

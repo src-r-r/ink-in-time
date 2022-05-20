@@ -5,4 +5,4 @@ class JitsiGenerator(MeetingGenerator):
 
     def generate(self):
         code = uuid1().hex
-        return "https://meet.jit.si/{code}"
+        return f"https://meet.jit.si/{code}"
