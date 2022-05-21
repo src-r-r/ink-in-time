@@ -23,7 +23,7 @@
           {% for tz in timezones %}
           <li>
             <a
-              href="{{ request.path }}?timezone={{ tz.value }}"
+              href="{{cfg.url_base}}{{ request.path }}?timezone={{ tz.value }}"
               iit-data-value="{{ tz.value }}"
             >
               {{ tz.label }}

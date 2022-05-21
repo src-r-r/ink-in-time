@@ -1,17 +1,21 @@
-<div class="section-container">
-  {% for item in choices %}
-  {% if choice_template %}
-  {% include choice_template %}
-  {% else %}
-  <a
-    href="{{cfg.url_base}}{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}"
-    class="btn btn-lg btn-outline-primary"
-  >
-    <p class="fs-1">{{ item.label }}</p>
-    {% if item.icon %}
-    <div class="container-fluid">{{ item.icon|safe }}</div>
+<div class="container iit-choices-container">
+  <div class="row">
+    {% for item in choices %}
+    {% if choice_template %}
+    {% include choice_template %}
+    {% else %}
+    <div class="col iit-choice-button ii-choice-{{ item.selection }}">
+      <a
+        href="{{cfg.url_base}}{{request.path}}{{ item.value }}{% if timezone %}?timezone={{ timezone.value }}{% endif %}"
+        class="btn btn-lg btn-outline-dark"
+      >
+        <p class="fs-1">{{ item.label }}</p>
+        {% if item.icon %}
+        <div class="container-fluid">{{ item.icon|safe }}</div>
+        {% endif %}
+      </a>
+    </div>
     {% endif %}
-  </a>
-  {% endif %}
-  {% endfor %}
+    {% endfor %}
+  </div>
 </div>

@@ -6,9 +6,11 @@ import pytz
 log = logging.getLogger(__name__)
 
 class TimeSpan:
-    def __init__(self, start: datetime, end: datetime):
+    def __init__(self, start: arrow.Arrow, end: arrow.Arrow, start_format="h:mm a", end_format="h:mm a"):
         self.start = start
         self.end = end
+        self.start_format = start_format
+        self.end_format = end_format
 
     @property
     def duration(self):
@@ -33,8 +35,9 @@ class TimeSpan:
             "for_select": self.as_select_value(),
             "human": {
                 "duration": hu.precisedelta(self.duration),
-                "start": self.start.strftime("%I:%M %P %Z"),
-                "end": self.end.strftime("%I:%M %P %Z"),
+                "start": self.start.format(self.start_format),
+                "end": self.end.format(self.end_format),
+                "timezone": self.end.strftime("%Z"),
             }
         }
 

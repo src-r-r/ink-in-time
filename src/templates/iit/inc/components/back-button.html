@@ -1,13 +1,13 @@
-<div class="row container">
-    <div class="col">
+<div class="iit-controller-row row">
+    <div class="col p-4">
         {% if meta and meta.back %}
-        <a href="{{ meta.back.url }}" class="btn btn-primary">
+        <a href="{{ meta.back.url }}" class="btn btn-outline-dark">
             <i class="bi bi-arrow-left"></i>
             <span>{{ meta.back.label }}</span>
         </a>
         {% endif %}
     </div>
-    <div class="col">
+    <div class="col p-4">
         {% include "iit/inc/selection/timezone.html" %}
     </div>
 </div>

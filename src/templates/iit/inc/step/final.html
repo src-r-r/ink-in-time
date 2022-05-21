@@ -11,10 +11,17 @@
             <select class="form-select" name="time">
             {% for item in choices %}
                 <option value="{{item.value.for_select}}">
+                    {% if item.value.start.hour < 6 %}
+                    🌜
+                    {% elif item.value.start.hour < 19 %}
+                    🌞
+                    {% else %}
+                    🌜
+                    {% endif %}
                     {{ item.value.human.start }}
                     -
                     {{ item.value.human.end }}
-                    ({{ item.value.human.duration}})
+                    {{ item.value.human.timezone }}
                 </option>
             {% endfor %}
             </select>

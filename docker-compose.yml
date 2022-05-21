@@ -36,7 +36,7 @@ services:
       - smtpdebug
     # entrypoint: /entrypoint.sh
     volumes:
-      - ./config/iit.yml:/app/iit.yml
+      - ./config/iit-debug.yml:/app/iit.yml
     
   # No debugging
   iit:

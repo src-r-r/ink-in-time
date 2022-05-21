@@ -22,7 +22,7 @@ from .db import compile_choices, get_lastrun_primary
 from .email import AppointmentRequest
 
 log = logging.getLogger(__name__)
-
+APP_NAME = __name__
 
 TPL_BASE = Path("iit")
 IDX_TPL = TPL_BASE / "index"
@@ -128,6 +128,8 @@ class IitFlask(Flask):
 
 ICS_MIME = "text/calendar"
 
+app = IitFlask(__name__)
+
 # where the magic happens!
 
 
@@ -137,8 +139,9 @@ def create_app(
 
     iit_config = iit_config or config
 
+    app.config.url_base = iit_config.url_base
+
     # create the application
-    app = IitFlask(__name__)
 
     # assign the callbacks
     app.after_request(run_compile_job)

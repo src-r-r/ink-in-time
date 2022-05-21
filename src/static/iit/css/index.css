@@ -21,7 +21,26 @@
 }
 
 footer {
-    bottom: 0;
-    position: absolute;
-    width: 100%
+    position: fixed;
+    bottom: 0pt;
+    width: 100%;
+}
+
+.iit-choice-button {
+    width: 100pt;
+    height: 100pt;
+    padding: 2pt;
+    margin: 0;
+}
+
+.iit-choice-button a {
+    width: 100pt
+}
+
+.iit-choices-container {
+    margin: 20pt;
+}
+
+iit-controller-row  {
+    margin: 5pt;
 }

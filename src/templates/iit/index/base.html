@@ -5,6 +5,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+    <!-- local styles & scripts -->
+    <link
+      href="{{config.url_base}}{{url_for('static', filename='iit/css/index.css')}}"
+      rel="stylesheet"
+      />
+    <script
+      src="{{config.url_base}}{{url_for('static', filename='jquery/jquery-3.6.0.slim.min.js')}}"
+    ></script>
+
     <!-- Bootstrap CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
@@ -14,15 +23,6 @@
     />
     <!-- bootstrap icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.2/font/bootstrap-icons.css">
-
-    <!-- local styles & scripts -->
-    <link
-      href="/static/iit/css/index.css"
-      rel="stylesheet"
-      />
-    <script
-      src="/static/jquery/jquery-3.6.0.slim.min.js"
-    ></script>
 
     <title>{% block site_title %}{% endblock %}</title>
   </head>
@@ -72,7 +72,7 @@
       crossorigin="anonymous"
     ></script>
     <script
-      src="/static/iit/js/index.js"
+      src="{{config.url_base}}{{url_for('static', filename='iit/js/index.js')}}"
     ></script>
 
     <!-- Option 2: Separate Popper and Bootstrap JS -->

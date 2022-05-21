@@ -1,10 +1,12 @@
 <ul class="navbar-nav me-auto mb-2 mb-lg-0 px-4 py-1 text-secondary">
     <li class="nav-item">
-        {{ request.host }}
+        {% if cfg.variables.organization_name %}
+        <strong>{{ cfg.variables.organization_name }}</strong>
+        {% else %}
+        <strong>This site</strong>
+        {% endif %}
         is powered by
-        <a href="https://github.com/src-r-r/ink-in-time">
-            Ink-In-Time
-        </a>,
+        <a href="https://github.com/src-r-r/ink-in-time">Ink-In-Time</a>,
         The Open Source No-Frills Scheduler
     </li>
 </ul>

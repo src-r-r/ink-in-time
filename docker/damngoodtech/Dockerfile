@@ -26,3 +26,5 @@ RUN apk add --no-cache --update --virtual \
   pipenv install --system --deploy
 
 WORKDIR ${PROJECT_DIR}
+
+ENTRYPOINT [ "/entrypoint.sh" ]
