@@ -308,6 +308,7 @@ def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
     # happen, but it may result if the user has A LOT of calendar data
     # and the interval between fetches is too short.
     # Another instance is if there's an SQL error.
+
     if is_primary_locked():
         log.warning("Primary table is locked")
         return

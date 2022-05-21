@@ -117,7 +117,7 @@ class Calendar:
         # Assign the event to the start time.
         if start not in self.events:
             self.events[start] = []
-        
+
         self.events[start].append(Event(self, start, end, sequence_event))
 
     def iter_all_events(self) -> T.Iterable[Event]:
@@ -214,14 +214,15 @@ def top_of_hour(when: datetime):
     return arr.shift(hours=+1).replace(minute=0, second=0)
 
 
-def awareness(unaware: T.Union[datetime, time], tz=config.my_timezone) -> T.Union[datetime, time]:
+def awareness(
+    unaware: T.Union[datetime, time], tz=config.my_timezone
+) -> T.Union[datetime, time]:
     if unaware.tzinfo:
         return unaware
     return tz.localize(unaware)
 
-def does_conflict(
-    calcol: CalendarCollection, a_start: arrow.Arrow, a_end : arrow.Arrow
-):
+
+def does_conflict(calcol: CalendarCollection, a_start: arrow.Arrow, a_end: arrow.Arrow):
     # Make sure both arrow tzs are aligned.
     a_start = a_start.to(a_end.tzinfo)
 
@@ -231,19 +232,23 @@ def does_conflict(
 
     swd = config.start_workday
     ewd = config.end_workday
-    
+
     # run the comparisons
     # To the workweek
     if a_end.time() >= ewd:
         return True
     if a_start.time() <= swd:
         return True
-    
+
     # check the conflicts with the calendars
     if calcol.does_conflict(a_start, a_end):
+        log.debug(
+            "Not yielding %s - %s",
+            a_start.format("MMM DD HH:mm a"),
+            a_end.format("MMM DD HH:mm a"),
+        )
         return True
     return False
-
 
 
 def fetch_calblocks(

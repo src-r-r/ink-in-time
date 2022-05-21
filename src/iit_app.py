@@ -14,7 +14,7 @@ from pathlib import Path
 import logging
 
 from .config import config
-from .core import MOCK_ICS_DIR
+from .core import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
 from .checker import check_config
 from .db import fetch_more_human_choices
 from .calendar import calblock_choices
@@ -140,6 +140,8 @@ def create_app(
     iit_config = iit_config or config
 
     app.config.url_base = iit_config.url_base
+    app.debug = FLASK_DEBUG
+    app.env = FLASK_ENV
 
     # create the application
 

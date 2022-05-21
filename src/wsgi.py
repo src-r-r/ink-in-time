@@ -11,17 +11,20 @@ FLASK_DOTENV = env.bool("FLASK_DOTENV", False)
 
 if FLASK_DOTENV:
     if Path(PROJ_ENV).exists():
-        env.read_env(PROJ_ENV)
+        with PROJ_ENV.open() as f:
+            env.read_env(f)
 
     # Or try loading from the execution path
     if Path(".env").exists():
-        env.read_env(PROJ_ENV)
+        with Path(".env").open() as f:
+            env.read_env(f)
 
+app = create_app(project_name=project_name)
 
 if __name__ == '__main__':
 
-    app = create_app(project_name=project_name)
     _debug = env.bool("FLASK_DEBUG", False)
+    app.debug = _debug
     # _debug = app.config.get('DEBUG', False)
 
     kwargs = {

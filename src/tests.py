@@ -25,6 +25,7 @@ from .db import (
     fetch_choices,
     is_primary_locked,
     is_primary_free,
+    unlock_primary_table,
     get_lastrun_primary,
     does_primary_or_secondary_exist,
 )
@@ -65,6 +66,7 @@ def test_fetch_calendars():
 
 
 def test_compile_choices():
+    unlock_primary_table()
     compile_choices()
     db = get_db()
     cur = db.cursor()

@@ -53,3 +53,9 @@ COMPILEPID_FILE: Path = PROJ_DIR / ".compilepid"
 
 MOCK_DIR = PROJ_DIR / "mock_data"
 MOCK_ICS_DIR = MOCK_DIR / "ics"
+
+
+# Environment options
+
+FLASK_DEBUG = env.bool("FLASK_DEBUG", False)
+FLASK_ENV = env.str("FLASK_ENV", "production")

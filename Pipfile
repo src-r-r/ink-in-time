@@ -37,6 +37,7 @@ faker = "*"
 beautifulsoup4 = "*"
 python-environ = "*"
 cachetools = "*"
+gunicorn = "*"
 
 [dev-packages]
 
