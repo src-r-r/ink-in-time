@@ -14,7 +14,7 @@ from pathlib import Path
 import logging
 
 from .config import config
-from .core import COMPILEPID_FILE, MOCK_ICS_DIR
+from .core import MOCK_ICS_DIR
 from .checker import check_config
 from .db import fetch_more_human_choices
 from .calendar import calblock_choices
@@ -93,15 +93,11 @@ def run_compile_job(request=None):
     if not do_run:
         return request
     log.info("kicking off compilation job")
-    if COMPILEPID_FILE.exists():
-        log.warning("%s exists, not running", COMPILEPID_FILE)
-        return request
     proc = Process(target=compile_choices)
     # Delay writing to the file for a bit to delay the reloader
     proc.start()
     time.sleep(0.5)
     pid = proc.pid
-    COMPILEPID_FILE.write_text(str(pid))
     return request
 
 

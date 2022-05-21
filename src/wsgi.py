@@ -1,5 +1,5 @@
 from .iit_app import create_app
-from .core import PROJ_ENV, COMPILEPID_FILE
+from .core import PROJ_ENV
 from .config import project_name, config
 from pathlib import Path
 import os
@@ -19,10 +19,6 @@ if FLASK_DOTENV:
 
 
 if __name__ == '__main__':
-    if COMPILEPID_FILE.exists() and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        msg = """pid file %s exists. This could mean the process didn't stop properly (or it's running after server exited). Please check for PID %s and kill it if desired, or remove the pidfile.
-    """
-        raise RuntimeError(msg % (COMPILEPID_FILE, COMPILEPID_FILE.read_text()))
 
     app = create_app(project_name=project_name)
     _debug = env.bool("FLASK_DEBUG", False)

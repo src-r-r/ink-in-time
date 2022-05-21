@@ -12,7 +12,7 @@ from flask.testing import Client as TestClient
 from multiprocessing import Process
 from bs4 import BeautifulSoup
 
-from .core import COMPILEPID_FILE, PROJ_CFG_DIR
+from .core import PROJ_CFG_DIR
 
 from .config import config
 
@@ -33,6 +33,8 @@ from .iit_app import create_app, run_compile_job
 config.dbpath = PROJ_CFG_DIR / "test.db"
 
 log = logging.getLogger(__name__)
+
+config.dbpath.unlink(missing_ok=True)
 
 
 def test_top_of_hour():
@@ -119,8 +121,8 @@ def client(app):
     client = app.test_client()
     # wait for the job to start
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        while not COMPILEPID_FILE.exists():
-            log.info("Waiting for job to start. Please wait...")
+        while not is_primary_free():
+            log.info("Waiting for job to complete. Please wait...")
             sleep(1)
     return client
 
@@ -282,7 +284,7 @@ def test_primary_lock():
 
     proc = Process(target=compile_choices)
     proc.start()
-    time.sleep(0.6)  # wait for a bit.
+    sleep(0.01)  # wait for a bit.
 
     assert is_primary_free() == False
     assert is_primary_locked() == True

@@ -2,7 +2,6 @@ import sqlite3
 from calendar import month_name
 from pathlib import Path
 from .config import config
-from .core import COMPILEPID_FILE
 from .calendar import calblock_choices, fetch_calblocks
 from .timespan import TimeSpan
 from datetime import timedelta, datetime
@@ -353,7 +352,6 @@ def compile_choices(inittime=arrow.now(tz=str(config.my_timezone))):
     duplicate_primary_to_secondary()
     # It must be talking about us! Get rid of the file.
     log.debug("Done!")
-    COMPILEPID_FILE.unlink(missing_ok=True)
 
 
 def normalize_record(record):
