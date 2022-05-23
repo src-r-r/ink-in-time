@@ -1,18 +1,44 @@
-# Ink In Time
+# About the Project
 
 Appointment scheduling/booking application that aims to be super-simple, and open source!
 
 - Privacy-friendly
+- Deployable in minutes!
 - Easy docker deployment
 - Few dependencies
 - Timeblock detection through ical references
 - Highly Configurable (via yaml)
+- Creates [Jit.si](https://meet.jit.si) meetings by default.
 - No Log-in needed!
-- Timezone selection
+- Timezone detection/selection
 - `block/YYY/MM/DD` selection to make appointment choosing easy
   ("Choose a time to meet tomorrow" → `30min/2022/9/30` )
 
-## Set Up
+# Set Up
+
+### Docker (recommended)
+
+Copy [the example config](./config/iit.example.yml) to your project directory.
+Modify anything with the `@REPLACEME` tag. The server will warn you if it 
+contains invalid values.
+
+```yml
+services:
+  iit:
+    image: damngoodtech/ink-in-time:latest
+    # This is required to provide a configuration
+    volumes:
+      - "./iit.yml:/app/iit.yml"
+    ports:
+      - "5000:5000" # exposes the port to the host
+  
+  web: # or whatever your "main" server service is
+    depends:
+      - iit
+```
+
+Now just configure your server to let some path like `/schedule` refer
+to port `5000` and you're golden!
 
 ### Non-Docker
 
@@ -55,33 +81,6 @@ Additional environment variables that may be of interest:
   <dd>Run flask in DEBUG mode</dd>
 </dl>
 
-### Docker
-
-This is meant for projects that want to pop in the Ink In Time project
-to their existing cluster/infrastructure.
-
-Create a new `iit.yml` file using the same `yml` template as for the non-docker setup. This will be your service configuration.
-
-Add the following to your existing `docker-compose.yml`
-
-```yml
-services:
-  iit:
-    image: damngoodtech/ink-in-time:latest
-    # This is required to provide a configuration
-    volumes:
-      - "./iit.yml:/app/iit.yml"
-    ports:
-      - "5000:5000" # exposes the port to the host
-  
-  web: # or whatever your "main" server service is
-    depends:
-      - iit
-```
-
-Now just configure your server to let some path like `/schedule` refer
-to port `5000` and you're golden!
-
 ### Overriding templates
 
 Because this service uses jinja2 for templating, you can absolutely
@@ -98,9 +97,13 @@ services:
       - "./my-awesome-templates:/app/templates"
       # ...
 ```
-## Testing
 
-### Running the tests
+# Getting Involved
+
+
+# Testing
+
+## Running the tests
 
 > Hint: if you want to test the calendar blocking feature, it's **HIGHLY**
 > recommended you pull from an ics mock server. See below.
@@ -113,7 +116,7 @@ Since the server runs a background process to compile the time blocks,
 sometimes this will result in a failure. See the debug messages for details.
 This usually involves a race condition to detect that the `.compilepid` has
 been created.
-### Mock Server
+## Mock Server
 
 The mock server uses `node-mock-server` to serve ICS files at `localhost:5002/ics`.
 
@@ -135,7 +138,7 @@ Note you will see errors from `icalendar` during the compilation process. These 
 > **WARNING**: Any data you place in the `mocking` directory will be commited to git!
 > A safer directory is `mock_data`, which is ignored.
 
-### Generating Mock icals
+## Generating Mock icals
 
 To generate your own mock data, run:
 

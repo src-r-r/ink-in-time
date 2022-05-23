@@ -1,8 +1,8 @@
 scheduling:
-  # Your timezone.
+  # @REPLACEME
+  # Check out the list of `pytz` timezone values.
   my_timezone: "US/Pacific"
   # List of appointments to offer the user.
-  # Icon can include HTML since it's marked as safe.
   appointments:
     "30min":
       label: Half an Hour
@@ -15,8 +15,7 @@ scheduling:
   # Grace period in timedelta dict
   grace_period:
     hours: 6
-  # When your workday starts and ends.
-  # the parameters are given as `timedelta` kwargs
+  # How far ahead to plan
   workday:
     start:
       hour: 6
@@ -24,8 +23,6 @@ scheduling:
     end:
       hour: 18
       minute: 00
-  # How far ahead to plan
-  # the parameters are given as `timedelta` kwargs
   view_duration:
     days: 60
 database:
@@ -38,51 +35,75 @@ database:
   # Given in `timedelta` format as a dict
   compilation_interval:
     minutes: 30
-
-# List of calendars to include to automatically
-# detect when you're free/busy
-# These are ICS links that you typically copy from
-# calendar share settings.
 calendars:
+  # Currently free times not implemented...maybe in the future?
   free:
   blocked:
-    # By default this is the mock calendar for the test suite.
-    # You may want to change this.
-    - "http://localhost:5002/ics/maybe-their.ics/"
+    # @REPLACEME
+    # Copy the public ical link from your calendar program and drop it here.
+    # Note `localhost:5002` is the mock calendar service used for testing.
+    # If you're not doing testing, feel free to remove it.
+    - "https://mycalendar.com/"
+    # - "http://localhost:5002/ics/maybe-their.ics/"
 organizer:
+  # @REMPLACEME
   # required
-  cn: <Your Own Name>
+  cn: "Rick Astley"
+  # @REMPLACEME
   # Email attached to both the ics event and the email message
-  email: <Your own email>
+  email: "user@example.com"
   # optional, but makes you look important 😆
   role: ""
 email:
-  # A class that will generate a meeting link.
-  # Currently pretty rudimentary, but you can plug your own in
-  # if desired.
   meeting_link_generator: "src.meetinggen.jitsi:JitsiGenerator"
-
-  # Separate subjects for organizer and participant
+  # @REPLACEME
+  # The email address associated with your "from" address. Might be 
+  # the same as the organizer email, but may be different. For example. Your 
+  # organizer email might be `jim@example.com`, but the `from` will be
+  # `noreply@scheduling.example.com`.
+  from: REPLACEME 
   organizer:
     subject: "Upcoming meeting with {{ participant_cn }}"
   participant:
     subject: "Upcoming meeting with {{ organizer_cn }}"
-  # NOTE: The default value is a test email server.
-  # MAKE SURE TO SET THIS TO YOUR OWN EMAIL SETTINGS
   server:
-    host: localhost
-    port: 1025
-    username: calendar-scheduling
-    password: supersecret
-# optionally, any variables you want passed
-# in to templates can be specified below.
-# Keep it flat, remember we're using '%'
-# replacements.
+    # +------------------+
+    # | Production Email |
+    # +------------------+
+    # Look up your server's SMTP settings. The keywords are as follows:
+    # host (required): the URL for the server
+    # port (required): port of the server (typicall 465, but check your
+    #                  email server docs)
+    # port (username): Username for serve rlogin
+    # port (username): the URL for the server
+    # use_ssl (optional, default=True): Typically not required. Most email
+    #   servers use ssl. Setting this to `False` is mainly meant for testing.
+    #
+    # @REPLACEME
+    use_ssl: True
+    host: smtp.example.com
+    # @REPLACEME
+    port: 465
+    # @REPLACEME
+    username: "username@example.com"
+    # @REPLACEME
+    password: "supersecret"
+    # +------------+
+    # | Test Email |
+    # +------------+
+    # This is used for testing. If you're not doing any testing or development, 
+    # feel free to remove this.
+    # use_ssl: false
+    # host: localhost
+    # host: smtpdebug
+    # port: 1025
+# optionally, any variables you want passed in to templates can be specified 
+# below.
 variables:
-  organization_name: My Cool Company
-  tagline: We're so cool!
+  # @replaceme
+  organization_name: My cool Organization
 ics:
-  # Can be templated with jinja2-style vars.
+  # Can be templated with jinja variables.
   # Variables that are passed in include:
   # - organizer_cn
   # - organizer_email
@@ -117,17 +138,26 @@ ics:
     prodid: "-//Ink In Time Scheduler//mxm.dk//"
     version: 2.0
     
+  # possibly deprecated -- ignore
   default_recipients:
     - user@localhost
 site:
+
+  # @REPLACEME
+  # The base url that will be prepended to assets and links. Make sure this 
+  # includes the path, as well. For example, if you set the scheduling app
+  # at `https://example.com/schedule`, put that as the `url_base`.
+  url_base: http://127.0.0.1/schedule
+
   # URL to get back to the "main site"
   # Completely optional; if ommitted, a
   # backref will not be displayed.
   backref:
-    url: http://localhost
+    url: http://127.0.0.1
     label: Back to Localhost
-
-# The ol' faithful Python logging dict.
+# You know the drill...the ol' Python logging dict.
+# Feel free to modify to your own amusement. Should work for 90% of the
+# cases, though.
 logging:
   version: 1
   disable_existing_loggers: true
