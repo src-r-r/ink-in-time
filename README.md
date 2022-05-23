@@ -1,5 +1,7 @@
 # About the Project
 
+![Ink-in Time Screenshot](./docs/images/screenshot-1.png)
+
 Appointment scheduling/booking application that aims to be super-simple, and open source!
 
 - Privacy-friendly
