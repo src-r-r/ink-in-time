@@ -21,7 +21,7 @@ Appointment scheduling/booking application that aims to be super-simple, and ope
 ### Docker (recommended)
 
 Copy [the example config](./config/iit.example.yml) to your project directory.
-Modify anything with the `@REPLACEME` tag. The server will warn you if it 
+Modify anything with the `@REPLACEME` tag. The server will warn you if it
 contains invalid values.
 
 ```yml
@@ -44,7 +44,7 @@ to port `5000` and you're golden!
 
 ### Non-Docker
 
-Copy `config/iit-example.yml` to `config/iit.yml`. Modify it accordingly. There 
+Copy `config/iit-example.yml` to `config/iit.yml`. Modify it accordingly. There
 are many options that are required. If something isn't configured correctly
 the service won't start.
 
@@ -102,6 +102,21 @@ services:
 
 # Getting Involved
 
+1. [File and issue](https://github.com/src-r-r/ink-in-time/issues)
+   - Make sure to include details on the issue. If it's cosmetic, attach screenshots.
+   - If you think you'd like to take on the issue, say so.
+   - Promote a lively discussion & healthy debate.
+2. Fork this repository
+3. Start a new branch based off the format `<your_username><year>WW<work_week>_<ticket>_<summary_of_issue>`, e.g. `rickastley2022WW42_123_email-generates-zoom-links`.
+3. Make sure you start up the mock docker containers.
+4. Once you have a bug fix, run the unit tests (see _Running the tests_ below).
+5. Push your fix to your branch.
+6. Create a pull request, detailing your fixes.
+
+# Customizations
+
+If you'd like customizations for your organization, I'd love to help you out.
+Please pick a time to chat at https://damngood.tech/schedule/60min/.
 
 # Testing
 
@@ -118,6 +133,7 @@ Since the server runs a background process to compile the time blocks,
 sometimes this will result in a failure. See the debug messages for details.
 This usually involves a race condition to detect that the `.compilepid` has
 been created.
+
 ## Mock Server
 
 The mock server uses `node-mock-server` to serve ICS files at `localhost:5002/ics`.
