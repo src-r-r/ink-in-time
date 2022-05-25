@@ -31,7 +31,7 @@ from .db import (
     get_lastrun_primary,
     does_primary_or_secondary_exist,
 )
-from .iit_app import create_app, run_compile_job
+from .iit_app import run_compile_job
 
 config.dbpath = PROJ_CFG_DIR / "test.db"
 
@@ -108,6 +108,7 @@ import os
 
 @pytest.fixture
 def app():
+    from .iit_app import create_app
     app = create_app(iit_config=config)
     app.config.update(
         {
@@ -117,7 +118,7 @@ def app():
     if not does_primary_or_secondary_exist():
         log.info("Feeding initial choices")
         compile_choices()
-    yield app
+    return app
 
 
 @pytest.fixture()
