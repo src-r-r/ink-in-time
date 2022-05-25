@@ -19,7 +19,10 @@ from .checker import check_config
 from .db import fetch_more_human_choices
 from .calendar import calblock_choices
 from .db import compile_choices, get_lastrun_primary
-from .email import AppointmentRequest
+from .email import (
+    OrganizerAppointmentRequest as OAR,
+    ParticipantAppointmentRequest as PAR,
+)
 
 log = logging.getLogger(__name__)
 APP_NAME = __name__
@@ -309,8 +312,10 @@ def create_app(
         end = arrow.get(int(end_utc), tzinfo=tz)
         appt = iit_config.appointments.get(block)
         meeting_link = iit_config.MeetingGenClass().generate()
-        req = AppointmentRequest(appt, start, end, email, name, details, meeting_link)
-        req.send_emails()
+        request_args = (appt, start, end, email, name, details, meeting_link)
+        reqs = (PAR(*request_args), OAR(*request_args))
+        for email in reqs:
+            email.send_email()
         return render_template(str(CONFIRM_TEMPLATE), **context)
 
     return app

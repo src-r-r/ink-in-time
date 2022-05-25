@@ -9,29 +9,41 @@ import arrow
 import logging
 import logging.config
 import pytz
+import importlib
+
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    select_autoescape,
+)
+
 from .checker import check_config
 from .appointment import Appointment
-import importlib
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
-from .core import PROJ_DIR, CONFIG_YML
+from .core import PACKAGE_NAME, PROJ_DIR, CONFIG_YML, TPL_DIR
 
 
 project_name = "Ink In Time"
 
 LOGNAME = __name__
-class Config:
 
+
+def combine(d1, d2):
+    return dict(list(d1.items()) + list(d2.items()))
+
+
+class Config:
     def __init__(self, yml=CONFIG_YML):
         with yml.open("r") as f:
             self._cfg = load(f, Loader=Loader)
-        
+
         check_config(self._cfg)
-        
+
         sched = self._cfg["scheduling"]
         self.grace_period = timedelta(**sched["grace_period"])
         self.my_timezone = pytz.timezone(sched["my_timezone"])
@@ -43,7 +55,7 @@ class Config:
         for (k, v) in sched["appointments"].items():
             self.appointments[k] = Appointment(k, v["label"], v["time"], v.get("icon"))
 
-        database = self._cfg["database"] 
+        database = self._cfg["database"]
         cnfpath = database["path"]
         if "{proj_dir}" in cnfpath:
             cnfpath = cnfpath.format(proj_dir=PROJ_DIR)
@@ -70,7 +82,7 @@ class Config:
         self.email_server = self._cfg["email"]["server"]
         self.email_organizer_subject = self._cfg["email"]["organizer"]["subject"]
         self.email_participant_subject = self._cfg["email"]["participant"]["subject"]
-        
+
         self.LOGGING = self._cfg["logging"]
 
         self.ics_summary = self._cfg["ics"]["summary"]
@@ -88,10 +100,33 @@ class Config:
         if "site" in self._cfg and "backref" in self._cfg["site"]:
             self.backref_url = self._cfg["site"]["backref"]["url"]
             self.backref_label = self._cfg["site"]["backref"]["label"]
-        
+
         self.variables = self._cfg.get("variables", {})
-    
-    def get_working_hours(self, ref_dt : arrow.Arrow):
+
+        # construct the jinja environment
+        self.jenv = Environment(
+            loader=FileSystemLoader(TPL_DIR),
+            autoescape=select_autoescape(),
+        )
+
+        self.render_context = {
+            "cfg": self,
+        }
+
+    def render(
+        self, tpl_name: T.Union[T.AnyStr, Path], ctx: T.Dict = dict(), **context: T.Dict
+    ):
+        """Render a template.
+
+        TODO This doesn't seem right to render from the config; yet there
+        should be a "central" place in which to have a config/environment.
+        Plus, we seem to be fighting the flask environment.
+        """
+        context = combine(self.render_context, ctx or context)
+        tpl = self.jenv.get_template(str(tpl_name))
+        return tpl.render(context)
+
+    def get_working_hours(self, ref_dt: arrow.Arrow):
         """Get the working hours for a given datetime
 
         Args:
@@ -115,13 +150,13 @@ class Config:
 
         s = s.to(ref_dt.tzinfo)
         e = e.to(ref_dt.tzinfo)
-        
+
         return (s, e)
-    
+
     def call_humanize(self, *args, **kwargs):
         fnc = getattr(humanize, self._humanize_func)
         return fnc(*args, **kwargs)
-    
+
     def get_end_view_dt(self, when=datetime.now()):
         tz = self.my_timezone
         if not when.tzinfo:

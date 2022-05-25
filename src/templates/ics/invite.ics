@@ -1,0 +1,23 @@
+BEGIN:VCALENDAR
+PRODID:-//Ink-In Time//Damn Good Technology 1.0//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+DTSTART:{{ dtstart }}
+DTEND:{{ dtend }}
+DTSTAMP:{{ created }}
+ORGANIZER;CN={{organizer_cn or organizer_email}}:mailto:{{ organizer_email }}
+UID:{{ uid }}
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN={{ organizer_email }};X-NUM-GUESTS={{ n_guests }}:mailto:{{ organizer_email }}
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN={{ participant_cn or participant_email }};X-NUM-GUESTS={{ n_guests }}:mailto:{{ participant_email }}
+CREATED:{{ created }}
+DESCRIPTION:{{ description }}
+LAST-MODIFIED:{{created}}
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:{{ summary }}
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

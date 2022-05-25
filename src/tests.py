@@ -13,12 +13,14 @@ from multiprocessing import Process
 from bs4 import BeautifulSoup
 
 from .core import PROJ_CFG_DIR
-
 from .config import config
-
 from . import util
 from .calendar import fetch_calblocks, top_of_hour
-from .email import AppointmentRequest
+from .appointment import Appointment
+from .email import (
+    OrganizerAppointmentRequest as OAR,
+    ParticipantAppointmentRequest as PAR,
+)
 from .db import (
     compile_choices,
     get_db,
@@ -313,6 +315,30 @@ def test_primary_lock():
     assert secondary_count == primary_count
 
 
+def test_constructing_email_ics():
+    appt = list(config.appointments.values())[0]
+    start = arrow.utcnow().shift(hours=2)
+    end = start.shift(hours=1)
+    participant_email = "rickastley@example.com"
+    participant_name = "Rick Astley"
+    notes = None
+    meeting_link = "http://localhost"
+    req_args = (
+        appt,
+        start,
+        end,
+        participant_email,
+        participant_name,
+        notes,
+        meeting_link,
+    )
+    oar = OAR(*req_args)
+    par = PAR(*req_args)
+
+    oar_ics = oar.create_calendar_ics()
+    par_ics = par.create_calendar_ics()
+
+
 def test_sending_email():
     # Get a user appointment
     appt = list(config.appointments.values())[0]
@@ -335,7 +361,7 @@ def test_sending_email():
     )
     assert ar.smtp()
 
-    ics = ar.create_ics("organizer")
+    ics = ar.create_ics_calendar("organizer")
 
     resp = ar.send_organizer_email()
     assert not resp
