@@ -113,10 +113,17 @@ services:
 5. Push your fix to your branch.
 6. Create a pull request, detailing your fixes.
 
+# Other Ways to Contribute
+
+- Donate money to the projecct <https://ko-fi.com/summary/c05d8728-c615-45f7-9f5d-5fe3b57895c9>.
+  Donors will be listed in the README. Minumum donation $1, **SUGGESTED: $10 OR MORE**
+- [Hire me!](https://damngood.tech) I'm a senior developer with over 10 years experience.
+  Currently open to clients tackling the impossible!
+
 # Customizations
 
 If you'd like customizations for your organization, I'd love to help you out.
-Please pick a time to chat at https://damngood.tech/schedule/60min/.
+Please pick a time to chat at <https://damngood.tech/schedule/60min/>.
 
 # Testing
 
