@@ -7,8 +7,10 @@
 {% block main %}
 <div class="container">
     <div class="alert alert-success">
-        <p>An email has been sent to <strong> {{ request.form.email }}</strong> from <strong>{{ cfg.organizer_email }}</strong>.</p>
+        <p>An email has been sent to <strong> {{ request.form.email }}</strong> from <strong>{{ cfg.email_from }}</strong>.</p>
         <p>Please check the spam folder if you don't receive it within the next few minutes.</p>
+        <p>If it's not in the spam folder, please send an email to <strong>{{ cfg.organizer_email }}</strong> to verify the meeting.</p>
+        <p>The fine print: Ink-In Time is still in beta so you may encounter issues</p>
     </div>
 </div>
 

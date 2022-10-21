@@ -57,10 +57,11 @@ class AppointmentRequestBase:
             "organizer_cn": cfg.organizer_cn,
             "organizer_email": cfg.organizer_email,
             "organizer_role": cfg.organizer_role,
-            "organizer_timezone": cfg.my_timezone,
+            "organizer_timezone": str(cfg.my_timezone),
             "participant_timezone": str(self.start.tzinfo),
             "participant_cn": self.participant_name,
             "participant_email": self.participant_email,
+            "from_email": cfg.email_from,
             "human_start": self.start.format(cfg.ics_dt_format_start),
             "raw_start": self.start,
             "dtstart": self.start.to("UTC").format(ARROW_ICS_FORMAT),
@@ -195,7 +196,7 @@ class ParticipantAppointmentRequest(AppointmentRequestBase):
         return TPL_EML_PARTICIPANT
     
     def get_email_to(self):
-        return cfg.organizer_email
+        return self.participant_email
     
     def get_subject_template(self):
-        return cfg.email_organizer_subject
+        return cfg.email_participant_subject

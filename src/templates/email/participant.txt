@@ -6,7 +6,7 @@ Timezone: {{ participant_timezone }}
 
 The meeting is at the following URL:
 
-            {{ meeting_link }}
+{{ meeting_link }}
 
 ---
 
