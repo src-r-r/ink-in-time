@@ -115,7 +115,7 @@ services:
 
 # Other Ways to Contribute
 
-- Donate money to the projecct <https://ko-fi.com/summary/c05d8728-c615-45f7-9f5d-5fe3b57895c9>.
+- Donate money to the project at [KoFi](https://ko-fi.com/summary/c05d8728-c615-45f7-9f5d-5fe3b57895c9).
   Donors will be listed in the README. Minumum donation $1, **SUGGESTED: $10 OR MORE**
 - [Hire me!](https://damngood.tech) I'm a senior developer with over 10 years experience.
   Currently open to clients tackling the impossible!

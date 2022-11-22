@@ -40,6 +40,7 @@ cachetools = "*"
 gunicorn = "*"
 
 [dev-packages]
+pipfile-requirements = "*"
 
 [requires]
 python_version = "3.10"
