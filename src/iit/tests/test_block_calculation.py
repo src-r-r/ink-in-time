@@ -1,1 +1,0 @@
-from iit.tasks import compile_calendars

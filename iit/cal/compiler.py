@@ -17,11 +17,11 @@ class CalendarCompilerBase:
             self.on_event(event)
 
 
-class SqlalchemyCalendarcompiler(CalendarCompilerBase):
+class PostgresCalendarCompiler(CalendarCompilerBase):
     
     def __init__(self, source : CalendarSource, bind : Engine):
         self.bind = bind
-        super(SqlalchemyCalendarcompiler, self).__init__(source)
+        super(PostgresCalendarCompiler, self).__init__(source)
     
     def on_event(self, event : Event):
         stmt = update(Block).where(event.overlps(Block.during)).values(is_unavailable=True)

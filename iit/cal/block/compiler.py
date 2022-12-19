@@ -14,35 +14,15 @@ class BlockCompilerBase:
         self.duration = duration
         self.duration_label = duration_label
     
-    def on_block(self, curr_start: Arrow, curr_end : Arrow):
+    def on_range(self, curr_start: Arrow, curr_end : Arrow):
         raise NotImplementedError()
     
     def compile(self):
         curr_start = self.start
         while curr_start < self.end:
             curr_end = curr_start + self.duration
-            self.on_block(self, curr_start, curr_end)
+            self.on_range(self, curr_start, curr_end)
             curr_start = curr_end
-
-class BlockCleanupBase:
-    
-    def __init__(self, theshold : Arrow):
-        self.theshold : Arrow = theshold
-    
-    def cleanup(self):
-        raise NotImplementedError()
-
-class PostgresBlockCleanup(BlockCleanupBase):
-    
-    def __init__(self, bind : Engine, *args, **kwargs):
-        self.bind = bind
-        super(PostgresBlockCleanup, self).__init__(*args, **kwargs)
-    
-    def cleanup(self):
-        with Session(self.bind) as session:
-            stmt = select(Block).filter(Block.during<now(self.threshold.tzinfo))
-            session.execute(stmt)
-            session.flush()
 
 class PostgresBlockCompiler(BlockCompilerBase):
     
@@ -50,7 +30,7 @@ class PostgresBlockCompiler(BlockCompilerBase):
         self.bind = engine
         super(PostgresBlockCompiler, self).__init__(*args, **kwargs)
     
-    def on_block(self, start : Arrow, end : Arrow):
+    def on_range(self, start : Arrow, end : Arrow):
         with Session(self.bind) as session:
             block = Block(
                 name = self.duration_label,

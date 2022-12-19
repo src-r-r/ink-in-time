@@ -40,6 +40,7 @@ gunicorn = "*"
 sqlalchemy = "*"
 celery = "*"
 psycopg2 = "*"
+sqlalchemy-migrate = "*"
 
 [dev-packages]
 pipfile-requirements = "*"
