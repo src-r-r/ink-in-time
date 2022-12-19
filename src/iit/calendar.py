@@ -22,43 +22,6 @@ def mkdt(x):
         return datetime(x.year, x.month, x.day, 0, 0, 0)
     return x
 
-
-class Event:
-    def __init__(self, calendar: "Calendar", start, end=None, sequence_event=None):
-        if not end or sequence_event:
-            raise RuntimeError("`end` or `sequence_event` required")
-        self.calendar = calendar
-        self._start = arrow.get(start)
-        self._end = arrow.get(end)
-        self.sequence_event = sequence_event
-
-    @property
-    def end(self):
-        tz = self.calendar.timezone
-        if self._end:
-            e = self._end
-        else:
-            e = self.calendar.sequence_end(self.sequence_event)
-        e = mkdt(e)
-        if e.tzinfo:
-            return e
-        return tz.localize(e)
-
-    @property
-    def start(self):
-        tz = self.calendar.timezone
-        s = mkdt(self._start)
-        if s.tzinfo:
-            return s
-        return tz.localize(s)
-
-    @property
-    def next(self):
-        k = self.calendar._next_key(self.start)
-        if not k:
-            return None
-        return self.calendar.events[k]
-
     def does_conflict(self, a_start, a_end):
         a1 = a_start
         a2 = a_end
