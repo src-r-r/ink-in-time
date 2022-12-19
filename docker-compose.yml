@@ -13,6 +13,18 @@ services:
     volumes:
       - ./docker/smtpdebug/start.sh:/start.sh
   
+  # task queue for celery
+  redis:
+    image: redis:7.0.5-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - iitredis
+    networks:
+      - iit
+  
   mockics:
     entrypoint: /start.sh
     build:
@@ -22,6 +34,7 @@ services:
       - 5002:5002
     volumes:
       - ./docker/mock_ics/start.sh:/start.sh
+  
   debugiit:
     build:
       context: .
@@ -29,6 +42,7 @@ services:
     ports:
       - "5000:5000"
     links:
+      - redis
       - mockics
       - smtpdebug
     depends_on:
@@ -37,6 +51,23 @@ services:
     # entrypoint: /entrypoint.sh
     volumes:
       - ./config/iit-debug.yml:/app/iit.yml
+  
+  # database
+  
+  db:
+    image: postgres:15.1-alpine
+    container_name: db
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - iitdb
+    networks:
+      - iit
+    environment:
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-example}"
+      - "POSTGRES_DB=${POSTGRES_DB:-iitdev}"
+
     
   # No debugging
   iit:
@@ -49,3 +80,7 @@ services:
     volumes:
       - ./config/iit.yml:/app/iit.yml
       - ./docker/mock_ics/start.sh:/start.sh
+
+networks:
+  iit:
+    name: iit

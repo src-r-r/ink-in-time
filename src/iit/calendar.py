@@ -9,8 +9,8 @@ import re
 from cachetools import cached, LRUCache, TTLCache
 from collections import namedtuple
 from datetime import timedelta, datetime, time, date
-from src.timespan import TimeSpan
-from src.config import config
+from iit.timespan import TimeSpan
+from iit.config import config
 
 log = logging.getLogger(__name__)
 
@@ -71,87 +71,21 @@ class Event:
         return (a1 < e1 and a2 > e2) or (a1 > e1 and a2 < e2) or (a1 < e2 and a2 > e2)
 
 
-class Calendar:
-    def __init__(self, timezone: pytz.timezone):
-        self.timezone = timezone
-        self.events = dict()
-        self._sequences = dict()
-
-    def sequence_end(self, event):
-        return self._sequences[event["sequence"]]
-
-    @property
-    def start_date(self):
-        return min(list(self.events.keys()))
-
-    @property
-    def end_date(self):
-        return max(list(self.events.keys()))
-
-    def _next_key(self, key):
-        keys = list(self.events.keys())
-        if key not in keys:
-            return None
-        next_i = keys.index(key) + 1
-        if next_i >= len(keys):
-            return None
-        return keys[next_i]
-
-    def add_event(self, vevent):
-        start = vevent["dtstart"][0].value
-        end = None
-        sequence_event = None
-        # If the event has an end date, set it.
-        if "dtend" in vevent:
-            end = vevent["dtend"][0].value
-        # Otherwise, refer to the sequence
-        elif "sequence":
-            seq = vevent["sequence"][0].value
-            if seq in self._sequences:
-                sequence_event = self._sequences[seq]
-        # If the squence has not been added, add it.
-        if "sequence" in vevent:
-            seq = vevent["sequence"][0].value
-            if seq not in self._sequences:
-                self._sequences[seq] = vevent
-        # Assign the event to the start time.
-        if start not in self.events:
-            self.events[start] = []
-
-        self.events[start].append(Event(self, start, end, sequence_event))
-
-    def iter_all_events(self) -> T.Iterable[Event]:
-
-        events = sorted(self.events.items(), key=lambda x: awareness(mkdt(x[0])))
-        for e in events:
-            yield e[1]
-
-    def does_conflict(self, a_start, a_end):
-        for eventset in self.iter_all_events():
-            for event in eventset:
-                if event.does_conflict(a_start, a_end):
-                    return True
-        return False
 
 
-CalCol = T.Dict[T.AnyStr, T.Iterable[Calendar]]
+class FreeCalendar(Calendar):
+    pass
+
+class BusyCalendar(Calendar):
+    pass
 
 
 class CalendarCollection:
     def __init__(self):
-        self.cals: CalCol = {
-            "free": [],
-            "blocked": [],
-        }
+        self.cals : T.Iterable[Calendar] = []
 
-    def add_calendar(self, caltype, calendar):
-        self.cals[caltype].append(calendar)
-
-    def does_conflict(self, a_start, a_end):
-        for cal in self.cals["blocked"]:
-            if cal.does_conflict(a_start, a_end):
-                return True
-        return False
+    def add_calendar(self, calendar):
+        self.cals.append(calendar)
 
 
 @cached(cache=TTLCache(maxsize=1024, ttl=300))
@@ -199,13 +133,13 @@ def construct_collection():
         for cal in cfg_cals.get(caltype, []) or []:
             for vcal in fetch_vobject(cal):
                 tz = get_tz_from_vcal(vcal)
-                calendar = Calendar(tz)
+                calendar = FreeCalendar(tz) if caltype == "free" else BusyCalendar(tz)
                 for event in get_events_from_vcal(vcal):
                     ev = vevent_to_timeblock(event)
                     if not ev:
                         continue
                     calendar.add_event(event)
-                collection.add_calendar(caltype, calendar)
+                collection.add_calendar(calendar)
     return collection
 
 
@@ -251,60 +185,60 @@ def does_conflict(calcol: CalendarCollection, a_start: arrow.Arrow, a_end: arrow
     return False
 
 
-def fetch_calblocks(
-    duration: timedelta, inittime=arrow.now(tz=str(config.my_timezone))
-) -> T.Iterable[TimeSpan]:
-    grace = config.grace_period
-    starttime = top_of_hour(inittime) + grace
-    a1 = starttime
-    collection = construct_collection()
-    endspan = config.get_end_view_dt(inittime)
-    endsequence = starttime + config.view_duration
-    # Now go through each of the `duration` blocks starting at inittime
-    while a1 + duration < endsequence:
-        a2 = a1 + duration
-        # log.debug("Checking for time %s -> %s (duration=%s)", a1, a2, duration)
-        if not does_conflict(collection, a1, a2):
-            yield TimeSpan(a1, a2)
-        a1 = a2
+# def fetch_calblocks(
+#     duration: timedelta, inittime=arrow.now(tz=str(config.my_timezone))
+# ) -> T.Iterable[TimeSpan]:
+#     grace = config.grace_period
+#     starttime = top_of_hour(inittime) + grace
+#     a1 = starttime
+#     collection = construct_collection()
+#     endspan = config.get_end_view_dt(inittime)
+#     endsequence = starttime + config.view_duration
+#     # Now go through each of the `duration` blocks starting at inittime
+#     while a1 + duration < endsequence:
+#         a2 = a1 + duration
+#         # log.debug("Checking for time %s -> %s (duration=%s)", a1, a2, duration)
+#         if not does_conflict(collection, a1, a2):
+#             yield TimeSpan(a1, a2)
+#         a1 = a2
 
 
-@cached(LRUCache(1024))
-def calblock_choices(
-    duration: timedelta,
-    year=None,
-    month=None,
-    day=None,
-    inittime=datetime.now(config.my_timezone),
-) -> T.Iterable[TimeSpan]:
-    """Automagically returns the next choice in the chain given the input.
+# @cached(LRUCache(1024))
+# def calblock_choices(
+#     duration: timedelta,
+#     year=None,
+#     month=None,
+#     day=None,
+#     inittime=datetime.now(config.my_timezone),
+# ) -> T.Iterable[TimeSpan]:
+#     """Automagically returns the next choice in the chain given the input.
 
-    TODO: Somhow this seems wrong; might need improvment
+#     TODO: Somhow this seems wrong; might need improvment
 
-    Args:
-        duration (timedelta): The duration of the appointment
-        year (int, optional): Chosen year. Defaults to None.
-        month (int, optional): Chosen month. Defaults to None.
-        day (int, optional): Chosen day. Defaults to None.
-        inittime (tz-aware datetime, optional): Initial time. Defaults to datetime.now(get_tz()).
+#     Args:
+#         duration (timedelta): The duration of the appointment
+#         year (int, optional): Chosen year. Defaults to None.
+#         month (int, optional): Chosen month. Defaults to None.
+#         day (int, optional): Chosen day. Defaults to None.
+#         inittime (tz-aware datetime, optional): Initial time. Defaults to datetime.now(get_tz()).
 
-    Returns:
-        T.Iterable[T.Any]: depending...
-            - list of years if nothing is selected
-            - list of months if year is selected
-            - list of days if month is selected
-            - list of timespans (as json) if day is selected
+#     Returns:
+#         T.Iterable[T.Any]: depending...
+#             - list of years if nothing is selected
+#             - list of months if year is selected
+#             - list of days if month is selected
+#             - list of timespans (as json) if day is selected
 
-    Yields:
-        Iterator[T.Iterable[TimeSpan]]: _description_
-    """
-    for ts in fetch_calblocks(duration, inittime=inittime):
-        ts: TimeSpan
-        if year and ts.start.year == year:
-            yield ts.start.month
-        elif month and ts.start.month == month:
-            yield ts.start.day
-        elif day and ts.start.day == day:
-            yield ts
-        elif not year:
-            yield ts.to_json()
+#     Yields:
+#         Iterator[T.Iterable[TimeSpan]]: _description_
+#     """
+#     for ts in fetch_calblocks(duration, inittime=inittime):
+#         ts: TimeSpan
+#         if year and ts.start.year == year:
+#             yield ts.start.month
+#         elif month and ts.start.month == month:
+#             yield ts.start.day
+#         elif day and ts.start.day == day:
+#             yield ts
+#         elif not year:
+#             yield ts.to_json()

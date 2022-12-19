@@ -1,6 +1,8 @@
+import typing as T
 import re
 import os
 from pathlib import Path
+from datetime import datetime
 
 from .coreutil import first_config
 from environ import Env
@@ -74,3 +76,6 @@ MOCK_ICS_DIR = MOCK_DIR / "ics"
 
 FLASK_DEBUG = env.bool("FLASK_DEBUG", False)
 FLASK_ENV = env.str("FLASK_ENV", "production")
+
+# Common types
+TimeSpan = T.Tuple[datetime, datetime]

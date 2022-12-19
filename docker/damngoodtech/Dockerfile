@@ -15,7 +15,7 @@ ENV FLASK_ENV=production
 WORKDIR ${PROJECT_DIR}
 COPY docker/damngoodtech/entrypoint.sh /
 COPY Pipfile Pipfile.lock ${PROJECT_DIR}
-COPY src ${PROJECT_DIR}/src
+# COPY src ${PROJECT_DIR}/src
 RUN apk add --no-cache --update fish
 
 # https://jonathanmeier.io/using-pipenv-with-docker/
@@ -27,4 +27,4 @@ RUN apk add --no-cache --update --virtual \
 
 WORKDIR ${PROJECT_DIR}
 
-ENTRYPOINT [ "/entrypoint.sh" ]
+# ENTRYPOINT [ "/entrypoint.sh" ]

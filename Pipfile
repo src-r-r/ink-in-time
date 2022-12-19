@@ -37,6 +37,9 @@ beautifulsoup4 = "*"
 python-environ = "*"
 cachetools = "*"
 gunicorn = "*"
+sqlalchemy = "*"
+celery = "*"
+psycopg2 = "*"
 
 [dev-packages]
 pipfile-requirements = "*"
