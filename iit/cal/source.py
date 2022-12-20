@@ -1,7 +1,7 @@
 import typing as T
 from vobject import iCalendar, readComponents
 import requests
-from iit.calendars.event import Event
+from iit.cal.event import Event
 
 ######
 # Extracting a calendar source allows for easier unit
@@ -9,7 +9,7 @@ from iit.calendars.event import Event
 # 
 class CalendarSource:
     
-    def get_events(self) -> T.Generator[Event]:
+    def get_events(self) -> T.Iterator[Event]:
         raise NotImplementedError()
 
 class RemoteCalendarSource(CalendarSource):
@@ -17,7 +17,7 @@ class RemoteCalendarSource(CalendarSource):
     def __init__(self, url):
         self.url = url
     
-    def get_events(self) -> T.Generator[Event]:
+    def get_events(self) -> T.Iterator[Event]:
         resp = requests.get(self.url)
         for vEvent in readComponents(resp.text):
             import ipdb; ipdb.set_trace()

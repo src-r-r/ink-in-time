@@ -44,6 +44,8 @@ sqlalchemy-migrate = "*"
 
 [dev-packages]
 pipfile-requirements = "*"
+ipython = "*"
+ipdb = "*"
 
 [requires]
 python_version = "3.10"

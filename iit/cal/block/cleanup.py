@@ -1,27 +1,29 @@
 from arrow import Arrow
 from arrow import now
 from datetime import timedelta
-from iit.db import Block
+from iit.models.block import Block
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import Range
+from sqlalchemy import func, delete, select
+from psycopg2.extras import Range, DateTimeTZRange
+
+from iit.models.block import Session
+from iit.models.functions import lower
 
 
 class BlockCleanupBase:
-    def __init__(self, theshold: Arrow):
-        self.theshold: Arrow = theshold
+    def __init__(self, threshold: Arrow):
+        self.threshold: Arrow = threshold
 
     def cleanup(self):
         raise NotImplementedError()
 
 
 class PostgresBlockCleanup(BlockCleanupBase):
-    def __init__(self, bind: Engine, *args, **kwargs):
-        self.bind = bind
+    def __init__(self, *args, **kwargs):
         super(PostgresBlockCleanup, self).__init__(*args, **kwargs)
 
     def cleanup(self):
-        with Session(self.bind) as session:
-            stmt = select(Block).filter(Block.during < now(self.threshold.tzinfo))
-            session.execute(stmt)
-            session.flush()
+        with Session() as session:
+            stmt = delete(Block).where(lower(Block.during) < self.threshold.datetime)
+            session.execute(stmt, execution_options={"synchronize_session": 'fetch'})
+            session.commit()

@@ -1,10 +1,12 @@
 from arrow import Arrow
 from arrow import now
 from datetime import timedelta
-from iit.db import Block
+from iit.models.block import Block
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import Range
+from sqlalchemy import func, select
+from psycopg2.extras import Range, DateTimeTZRange
+
+from iit.models.block import Session
 
 class BlockCompilerBase:
     
@@ -19,22 +21,21 @@ class BlockCompilerBase:
     
     def compile(self):
         curr_start = self.start
-        while curr_start < self.end:
+        while curr_start + self.duration < self.end:
             curr_end = curr_start + self.duration
-            self.on_range(self, curr_start, curr_end)
+            self.on_range(curr_start, curr_end)
             curr_start = curr_end
 
 class PostgresBlockCompiler(BlockCompilerBase):
     
-    def __init__(self, engine : Engine, *args, **kwargs):
-        self.bind = engine
+    def __init__(self, *args, **kwargs):
         super(PostgresBlockCompiler, self).__init__(*args, **kwargs)
     
     def on_range(self, start : Arrow, end : Arrow):
-        with Session(self.bind) as session:
+        with Session() as session:
             block = Block(
                 name = self.duration_label,
-                during = Range(start, end),
+                during = DateTimeTZRange(start.datetime, end.datetime),
             )
             session.add(block)
             session.commit()
