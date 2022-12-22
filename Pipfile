@@ -41,6 +41,7 @@ sqlalchemy = "*"
 celery = "*"
 psycopg2 = "*"
 sqlalchemy-migrate = "*"
+etebase = "*"
 
 [dev-packages]
 pipfile-requirements = "*"

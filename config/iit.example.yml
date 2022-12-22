@@ -4,18 +4,10 @@ scheduling:
   my_timezone: "US/Pacific"
   # List of appointments to offer the user.
   appointments:
-    "30min":
-      label: Half an Hour
-      time: 30
-      icon: <i class="bi bi-circle-half"></i>
-    "60min":
-      label: 1 Hour
-      time: 60
-      icon: <i class="bi bi-circle-fill"></i>
-  # Reasons for setting the appointment.
-  reasons:
-    con: "Initial Consultation"
-    up: "Project Update"
+    "Short Consultation": 30
+    "Full Full Hour": 60
+    "Project Update": 15
+    "Project Showcase": 180
   # Grace period in timedelta dict
   grace_period:
     hours: 6
@@ -29,16 +21,6 @@ scheduling:
       minute: 00
   view_window:
     days: 60
-database:
-  # sqlite file
-  # Path variables are resolved
-  # Directories are created if not found.
-  # proj_dir=project directory
-  path: "{proj_dir}/db/inkintime.db"
-  # How often to run the block compilation job.
-  # Given in `timedelta` format as a dict
-  compilation_interval:
-    minutes: 30
 calendars:
   # Currently free times not implemented...maybe in the future?
   free:
@@ -47,8 +29,16 @@ calendars:
     # Copy the public ical link from your calendar program and drop it here.
     # Note `localhost:5002` is the mock calendar service used for testing.
     # If you're not doing testing, feel free to remove it.
+    #
+    # Calendars can either be a URL...
     - "https://mycalendar.com/"
     # - "http://localhost:5002/ics/maybe-their.ics/"
+    # ...or a CalendarSource object...
+    # - class: iit.cal.source.EtebaseCalendarSource
+    #   kwargs:
+    #     username: my_etesync_username
+    #     password: my_etesync_password
+    #   args:
 organizer:
   # @REMPLACEME
   # required
@@ -61,11 +51,11 @@ organizer:
 email:
   meeting_link_generator: "src.meetinggen.jitsi:JitsiGenerator"
   # @REPLACEME
-  # The email address associated with your "from" address. Might be 
-  # the same as the organizer email, but may be different. For example. Your 
+  # The email address associated with your "from" address. Might be
+  # the same as the organizer email, but may be different. For example. Your
   # organizer email might be `jim@example.com`, but the `from` will be
   # `noreply@scheduling.example.com`.
-  from: REPLACEME 
+  from: REPLACEME
   organizer:
     subject: "Upcoming meeting with {{ participant_cn }}"
   participant:
@@ -95,13 +85,13 @@ email:
     # +------------+
     # | Test Email |
     # +------------+
-    # This is used for testing. If you're not doing any testing or development, 
+    # This is used for testing. If you're not doing any testing or development,
     # feel free to remove this.
     # use_ssl: false
     # host: localhost
     # host: smtpdebug
     # port: 1025
-# optionally, any variables you want passed in to templates can be specified 
+# optionally, any variables you want passed in to templates can be specified
 # below.
 variables:
   # @replaceme
@@ -141,14 +131,13 @@ ics:
   meta:
     prodid: "-//Ink In Time Scheduler//mxm.dk//"
     version: 2.0
-    
+
   # possibly deprecated -- ignore
   default_recipients:
     - user@localhost
 site:
-
   # @REPLACEME
-  # The base url that will be prepended to assets and links. Make sure this 
+  # The base url that will be prepended to assets and links. Make sure this
   # includes the path, as well. For example, if you set the scheduling app
   # at `https://example.com/schedule`, put that as the `url_base`.
   url_base: http://127.0.0.1/schedule
@@ -159,6 +148,31 @@ site:
   backref:
     url: http://127.0.0.1
     label: Back to Localhost
+
+# This workflow allows for automated client follow-up.
+# Each step will contain the following attributes:
+#  `event`: Event type, wich can either be `init`
+#           (The time when the initial invitation
+#            email was sent), `event_start` (the
+#            event start time), or `event_end`
+#           (the event end time)
+#  `delay`: (optional). timedelta kwargs to specify how long after the
+#           event the task should be triggered. If not given, will be
+#           triggered immediately.
+#  `task`: Task the be invoked.
+#  `task_kwargs`: Keyword arguments sent to the Task
+tasks:
+  - event: init
+    task: iit.tasks.email.SendParticipantInvitation
+  - event: init
+    task: iit.tasks.email.SendHostInvitation
+  - event: init
+    task: iit.task.calendar.SetFollowupReminders
+    task_kwargs:
+      count: 3
+      interval:
+        - days: 7
+
 # You know the drill...the ol' Python logging dict.
 # Feel free to modify to your own amusement. Should work for 90% of the
 # cases, though.
