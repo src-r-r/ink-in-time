@@ -1,5 +1,5 @@
 from iit.cal.source import CalendarSource
-from iit.cal.event import Event
+from iit.cal.event import InboundEvent
 from datetime import timedelta
 import random
 import arrow
@@ -23,7 +23,7 @@ class StaticMockCalendarSource(CalendarSource):
                    (inclusive)
         """
         for i in range(self.day_seq_start, self.day_seq_end):
-            yield Event(
+            yield InboundEvent(
                 arrow.Arrow(2021, 1, i, self.hour_duration_start),
                 arrow.Arrow(2021, 1, i, self.hour_duration_end),
             )
@@ -45,5 +45,5 @@ class RandomizedMockCalendarSource(CalendarSource):
         e_start = self.start
         while e_end <= self.end:
             e_end = self.start + self._rand_duration()
-            yield Event(e_start, e_end)
+            yield InboundEvent(e_start, e_end)
             e_start = e_end + self._rand_interval()

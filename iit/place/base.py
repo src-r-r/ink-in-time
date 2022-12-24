@@ -1,0 +1,2 @@
+class MeetingPlace:
+    pass

@@ -80,6 +80,16 @@ services:
     volumes:
       - ./config/iit.yml:/app/iit.yml
       - ./docker/mock_ics/start.sh:/start.sh
+  
+  etebase:
+    image: victorrds/etesync:slim
+    environment:
+      - "SUPER_USER=${SUPER_USER:-admin}"
+    ports:
+      - "84:3735"
+    volumes:
+      - "./etebase:/data"
+
 
 networks:
   iit:

@@ -111,12 +111,11 @@ ics:
   # - human_end
   # - raw_end
   # - notes
-  # - block_key
-  # - block_label
+  # - block
   # - raw_duration
   # - human_duration
   # - meeting_link
-  summary: "Upcoming Meeting between {{ organizer_cn }} and {{ participant_cn }}"
+  summary: "{{ block }} between {{ organizer_cn }} and {{ participant_cn }}"
   # See https://arrow.readthedocs.io/en/latest/#supported-tokens
   # for format
   dt_format:

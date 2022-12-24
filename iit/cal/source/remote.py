@@ -1,5 +1,5 @@
 import typing as T
-from iit.cal.event import Event
+from iit.cal.event import InboundEvent
 from iit.cal.source.base import CalendarSource
 from vobject import readComponents
 
@@ -17,4 +17,4 @@ class RemoteCalendarSource(CalendarSource):
                 if not (start and end):
                     log.warning("No `start` or `end` for %s", vEvent)
                     continue
-                yield Event(start, end)
+                yield InboundEvent(start, end)
