@@ -42,6 +42,8 @@ celery = "*"
 psycopg2 = "*"
 sqlalchemy-migrate = "*"
 etebase = "*"
+dateparser = "*"
+simple-chalk = "*"
 
 [dev-packages]
 pipfile-requirements = "*"
