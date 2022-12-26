@@ -11,14 +11,14 @@ scheduling:
   # Grace period in timedelta dict
   grace_period:
     hours: 6
+  # here you specify your weekly schedule.
+  # The calendar will not have blocks allocated
+  # outside these hours.
+  # I created a mini-parser that understands (most)
+  # weekday ranges, values, etc.
+  work_week:
+    - ["monday-friday", "6AM - 4PM"]
   # How far ahead to plan
-  workday:
-    start:
-      hour: 6
-      minute: 30
-    end:
-      hour: 18
-      minute: 00
   view_window:
     days: 60
 calendars:

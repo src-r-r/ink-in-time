@@ -6,7 +6,8 @@ from iit.callang.parser import (
     Dash,
     Comma,
     CallangTokenError,
-    Tokenizer,
+    DayListTokenizer,
+    TimeListTokenizer,
     DayList,
     DayListParser,
     TimeListParser,
@@ -23,7 +24,9 @@ from iit.callang.parser import (
     SUNDAY,
 )
 import logging
+
 log = logging.getLogger(__name__)
+
 
 def test_tokenizer():
     tests = [
@@ -34,7 +37,6 @@ def test_tokenizer():
             "monday, tue, th",
             [Day("monday"), Comma(","), Day("tue"), Comma(","), Day("th")],
         ),
-        (("8AM - 4PM"), ([TimeVal("8"), Merid("AM"), Dash("-"), TimeVal("4"), Merid("PM")])),
     ]
     invalid = [
         "mon __&",
@@ -42,7 +44,7 @@ def test_tokenizer():
         "wed+=",
     ]
 
-    tokenizer = Tokenizer()
+    tokenizer = DayListTokenizer()
 
     for (t, expected) in tests:
         result = [i for i in tokenizer.iter_tokens(t)]
@@ -74,7 +76,7 @@ def test_day_list():
 
 def test_get_time_tokens():
 
-    tokenizer = Tokenizer()
+    tokenizer = TimeListTokenizer()
 
     assert [t for t in tokenizer.iter_tokens("8AM")] == [TimeVal("8"), Merid("AM")]
     assert [t for t in tokenizer.iter_tokens("8AM - 4PM")] == [
@@ -103,11 +105,49 @@ def test_get_time_tokens():
 
 def test_time_list():
     tlp = TimeListParser()
+
+    tokenizer = TimeListTokenizer()
+    result = []
+    for tok in tokenizer.iter_tokens("8AM - 11 a, 1PM - 7:00PM"):
+        log.debug("testing: %s", tok)
+        result.append(tok)
+    expected = [
+        TimeVal("8"),
+        Merid("AM"),
+        Dash("-"),
+        TimeVal("11"),
+        Merid("a"),
+        Comma(","),
+        TimeVal("1"),
+        Merid("PM"),
+        Dash("-"),
+        TimeVal("7:00"),
+        Merid("PM"),
+    ]
+    assert result == expected
+
     result = tlp.parse("8AM").normalized()
     expected = TimeList(TimeVal("8")).normalized()
     assert result == expected
 
-    log.debug(red("testing '8 - 4PM'"))
-    result = tlp.parse("8 - 4PM").normalized()
+    result = [i for i in tokenizer.iter_tokens("8AM - 4PM")]
+    expected = [TimeVal("8"), Merid("AM"), Dash("-"), TimeVal("4"), Merid("PM")]
+    assert result == expected
+    result = tlp.parse("8AM - 4PM")
+    # result = tlp.parse("8AM - 4PM").normalized()
     expected = TimeList(TimeRange(TimeVal("8"), TimeVal(time(hour=16)))).normalized()
     assert result == expected
+
+def test_simple_iterator():
+    simple = [x for x in range(0, 10)]
+    output = []
+    it = iter(simple)
+    i = next(it)
+    while 1:
+        output.append(i)
+        try:
+            i = next(it)
+        except StopIteration:
+            break
+    
+    assert output == simple

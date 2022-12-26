@@ -144,12 +144,14 @@ class Day(Single):
 
 class Range(list):
     def __init__(self, start: Single, end: Single):
-        if start > end:
+        self.start = start
+        self.end = end
+
+    def check(self):
+        if self.start > self.end:
             raise CallangInterpreterError(
                 f"Start ({start}) is greater than end ({end})"
             )
-        self.start = start
-        self.end = end
 
     def normalize(self):
         raise NotImplementedError()
@@ -200,13 +202,16 @@ class TimeVal(Single):
             return False
         return self._as_time() == o._as_time()
 
+    def __str__(self):
+        return f"{self._as_time()}"
+
 
 class Merid(Tok):
     expr = re.compile(r"[ap]\.?m?\.?", re.I)
 
     @property
     def is_pm(self):
-        return self.value[0] == "p"
+        return self.value[0].lower() == "p"
 
 
 class DayRange(Range):
@@ -226,9 +231,6 @@ class TimeRange(Range):
         # In that case, infer based on hour order.
         stime = start._as_time()
         etime = end._as_time()
-        if stime > etime:
-            start.is_pm = False
-            end.is_pm = True
         super(TimeRange, self).__init__(start, end)
 
     def normalize(self):
@@ -260,20 +262,16 @@ class TokenReached(Exception):
     pass
 
 
-class Tokenizer:
+class TokenizerBase:
     def __init__(self):
         self.stack = []
         self._iter: T.Iterator[T.AnyStr] = None
         self._i = None
 
     def get_match(self, tokval):
-        for T in TOKENS:
+        for T in self.Meta.TOKENS:
             if T.match(tokval):
                 return T(tokval)
-
-    @property
-    def _stk(self):
-        return "".join(self.stack)
 
     def on_char(self, i: int, c: T.AnyStr):
         log.debug("[%d] (%s) - %s", i, c, yellow(self._stk))
@@ -282,35 +280,34 @@ class Tokenizer:
             if self.stack:
                 yield self.get_match(self._stk)
             self.stack = []
-            return
         # (number) followed by (word) (e.g. "4PM")
-        if re.match(r"[a-zA-Z]", c) and re.match(r"\d+", self._stk):
+        elif re.match(r"[a-zA-Z]", c) and re.match(r"\d+", self._stk):
             tokval = self._stk
             self.stack = [c]
             yield self.get_match(tokval)
-            return
         # Symbols
-        if re.match(r"[\-\,]", c):
+        elif re.match(r"[\-\,]", c):
             if self._stk:
                 yield self.get_match(self._stk)
                 self.stack = []
             yield self.get_match(c)
-            return
         # Time
-        if re.match(r"\:", c) and re.match(r"(\d+(\:\d+)?)", self._stk):
+        elif re.match(r"\:", c) and re.match(r"(\d+(\:\d+)?)", self._stk):
             self.stack.append(c)
-            return
         # General number
-        if re.match(r"[0-9]+", c):
+        elif re.match(r"[0-9]+", c):
             log.debug("number: %s", c)
             self.stack.append(c)
-            return
         # any character
-        if re.match(r"[a-zA-Z]", c):
+        elif re.match(r"[a-zA-Z]", c):
             self.stack.append(c)
-            return
         # This is an error
-        raise CallangTokenError(c, i, "Invalid token")
+        else:
+            raise CallangTokenError(c, i, "Invalid token")
+
+    @property
+    def _stk(self):
+        return "".join(self.stack)
 
     def _next(self):
         return next(self._iter)
@@ -319,21 +316,43 @@ class Tokenizer:
         log.debug(
             "Incoming text: %s, %s", blue(f"({len(text)} characters)"), magenta(text)
         )
-        self._iter = iter(text)
+        titer = iter(text)
         self.stack = []
         i = 0
-        tok = None
-        do_break = False
         while 1:
             try:
-                c = next(self._iter)
+                c = next(titer)
                 for tok in self.on_char(i, c):
+                    log.debug("**yielding %s", tok)
                     yield tok
                 i += 1
             except StopIteration:
-                log.debug("-stop-")
-                yield self.get_match(self._stk)
+                last = self.get_match(self._stk)
+                yield last
+                log.debug("tokenizing %s complete", magenta(text))
                 return
+
+    class Meta:
+        TOKENS = None
+
+
+class DayListTokenizer(TokenizerBase):
+    class Meta:
+        TOKENS = [
+            Day,
+            Dash,
+            Comma,
+        ]
+
+
+class TimeListTokenizer(TokenizerBase):
+    class Meta:
+        TOKENS = [
+            TimeVal,
+            Dash,
+            Comma,
+            Merid,
+        ]
 
 
 class SingleAndRangeList(list):
@@ -385,9 +404,11 @@ class ListOrRangeParser:
         return next(self._iter)
 
     def as_list(self):
-        raise NotImplementedError()
+        ListClass = self.Meta.LIST_CLASS
+        return ListClass(*self.stack)
 
     def parse(self, text: T.AnyStr):
+        Tokenizer = self.Meta.TOKENIZER_CLASS
         tokenizer = Tokenizer()
         self.stack = []
         self._iter = tokenizer.iter_tokens(text)
@@ -399,6 +420,10 @@ class ListOrRangeParser:
             except StopIteration:
                 log.debug("-- parsing iter over tokens complete --")
                 return self.as_list()
+
+    class Meta:
+        TOKENIZER_CLASS = None
+        LIST_CLASS = None
 
 
 class DayListParser(ListOrRangeParser):
@@ -412,44 +437,60 @@ class DayListParser(ListOrRangeParser):
             start = self.stack.pop()
             end = self._next()
             log.debug("encountered: %s, fetch %s to add to %s", tok, end, start)
-            self.stack.append(DayRange(start, end))
+            day_range = DayRange(start, end)
+            day_range.check()
+            self.stack.append(day_range)
             log.debug(yellow("stack: %s"), self.stack)
 
             return True
         return True
 
-    def parse(self, text):
-        return super(DayListParser, self).parse(text)
-
-    def as_list(self):
-        return DayList(*self.stack)
+    class Meta:
+        TOKENIZER_CLASS = DayListTokenizer
+        LIST_CLASS = DayList
 
 
 class TimeListParser(ListOrRangeParser):
+    def __init__(self, *args, **kwargs):
+        # This is a work-around so that we don't have
+        # to consume the last token.
+        self._range_context = dict()
+        super(TimeListParser, self).__init__(*args, **kwargs)
+
     def parse_token(self, tok):
         if isinstance(tok, TimeVal):
             log.debug("encountered: %s, push", tok)
+            if self._range_context:
+                log.debug("range context, so converting to TimeRange")
+                start = self._range_context["start"]
+                end = tok
+                tok = TimeRange(start, end)
+                self._range_context = dict()
             self.stack.append(tok)
             return False
         if isinstance(tok, Merid):
             timeval = self.stack.pop()
-            timeval.is_pm = tok.is_pm
+            # Whenever the parser encounters a TimeRange, it first constructs the
+            # time range without looking for a Merid. In this case we must
+            # extract the end time, and make that a PM.
+            if isinstance(timeval, TimeVal):
+                log.debug("Setting %s.is_pm = %s", timeval, tok.is_pm)
+                timeval.is_pm = tok.is_pm
+            elif isinstance(timeval, TimeRange):
+                log.debug("Setting %s.is_pm = %s", timeval, tok.is_pm)
+                timeval.end.is_pm = tok.is_pm
+                timeval.check()
             self.stack.append(timeval)
-            log.debug("encountered: %s, make pm? %s", tok, tok.is_pm)
             log.debug(yellow("stack: %s"), self.stack)
             return True
         if isinstance(tok, Dash):
             timeval = self.stack.pop()
-            end = self._next()
-            timerange = TimeRange(timeval, end)
-            self.stack.append(timerange)
-            log.debug("encountered: %s, make connect %s to end %s", tok, timeval, end)
+            end = None
+            self._range_context.update({"start": timeval, "end": None})
             log.debug(yellow("stack: %s"), self.stack)
             return True
         return True
 
-    def as_list(self):
-        return TimeList(*self.stack)
-
-    def parse(self, text):
-        return super(TimeListParser, self).parse(text)
+    class Meta:
+        TOKENIZER_CLASS = TimeListTokenizer
+        LIST_CLASS = TimeList
