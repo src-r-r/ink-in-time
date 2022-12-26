@@ -1,3 +1,4 @@
+from yaml import load
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -5,7 +6,7 @@ except ImportError:
     
 from environ import Env
 
-from .core.const import PACKAGE_NAME, PROJ_DIR, CONFIG_YML, TPL_DIR
+from iit.core.const import PACKAGE_NAME, PROJ_DIR, CONFIG_YML, TPL_DIR
 
 env = Env()
 env.read_env()
@@ -20,5 +21,5 @@ def get_config():
 
 # other constant settings. I don't like it here. :-(
 
-DB_URL = env.db_url_config("DB_URL")
+DB_URL = env.str("DB_URL")
 BROKER_URL = env.url("BROKER_URL")

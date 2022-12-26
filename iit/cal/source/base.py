@@ -1,6 +1,7 @@
 import typing as T
 from vobject import iCalendar, readComponents
 import requests
+from iit.cal.event import InboundEvent
 import arrow
 if T.TYPE_CHECKING:
     from iit.cal.event import Event
@@ -10,7 +11,7 @@ if T.TYPE_CHECKING:
 # testing. :-)
 #
 class CalendarSource:
-    def get_events(self) -> T.Iterator["Event"]:
+    def get_events(self) -> T.Iterator[InboundEvent]:
         raise NotImplementedError()
 
 

@@ -1,7 +1,7 @@
 import os
 import logging
 from sqlalchemy.engine import create_engine
-from sqlalchemy.orm import declared_attr, Session, declarative_mixin, sessionmaker
+from sqlalchemy.orm import declared_attr, declarative_mixin, sessionmaker
 from sqlalchemy import (
     Column,
     String,
@@ -10,6 +10,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Boolean,
 )
+from environ import Env
 from psycopg2.extras import Range
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import TSTZRANGE
@@ -34,5 +35,10 @@ class Block(Model, Base):
 
     __table_args__ = (UniqueConstraint("name", "during"),)
 
-engine = create_engine(os.getenv("DB_URL"), echo=True)
+
+env = Env()
+Env.read_env(".env")
+
+db_url = env.str("DB_URL")
+engine = create_engine(db_url, echo=True)
 Session = sessionmaker(bind=engine)

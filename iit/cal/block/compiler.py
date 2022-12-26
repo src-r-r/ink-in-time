@@ -3,7 +3,7 @@ from arrow import Arrow
 from arrow import now
 from datetime import timedelta
 from iit.models.block import Block
-from iit.timespan import TimeSpan
+from iit.types import WeeklySchedule, TimeSpan, FlexTime
 from sqlalchemy.engine import Engine
 from sqlalchemy import func, select
 from psycopg2.extras import Range, DateTimeTZRange
@@ -34,17 +34,22 @@ class BlockCompilerBase:
 
 
 class PostgresBlockCompiler(BlockCompilerBase):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, session, *args, **kwargs):
+        self.session = session
         super(PostgresBlockCompiler, self).__init__(*args, **kwargs)
 
     def on_range(self, start: Arrow, end: Arrow):
-        with Session() as session:
-            block = Block(
-                name=self.duration_label,
-                during=DateTimeTZRange(start.datetime, end.datetime),
-            )
-            session.add(block)
-            session.commit()
+        name = self.duration_label
+        during = DateTimeTZRange(start.datetime, end.datetime)
+        block = Block(
+            name=name,
+            during=during,
+        )
+        if self.session.query(Block).filter_by(name=name, during=during).count():
+            log.debug("%s already exists, doing nothing", block)
+            return
+        self.session.add(block)
+        self.session.commit()
 
 
 class PostgresIitBlockCompiler(BlockCompilerBase):
@@ -63,6 +68,7 @@ class PostgresIitBlockCompiler(BlockCompilerBase):
             start_window (Arrow): When to start compiling the blocks. Defaults to today if not given.
             end_window (Arrow): When to stop compiling the blocks. Optional. If not given will just pull from the calendar source.
         """
+        self.session = session
         self.weekly_schedule = weekly_schedule
         self.start_window = start_window or now()
         self.end_window = end_window

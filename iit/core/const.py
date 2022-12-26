@@ -44,13 +44,13 @@ DOCKER_APP = env.path("PROJECT_DIR", PROJ_DIR)
 
 # Config will first try the file pointed at by
 # `IIT_YML` (if it exists).
-CONFIG_YML = first_config(
+CONFIG_YML = env.path("IIT_YML", first_config(
     DOCKER_APP, # Used for docker
     ETC_IIT_DIR, # System installs
     HOME_CFG_DIR, # for user installations
     PROJ_CFG_DIR, # Typically for development
     filename="iit.yml",
-)
+))
 
 
 SRC_DIR = PROJ_DIR / "src"
