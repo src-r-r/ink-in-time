@@ -79,6 +79,13 @@ class TimeSpan:
 
     def __repr__(self):
         return f"<TimeSpan (start={self.start}, end={self.end}, [duration={hu.naturaldelta(self.duration)}])>"
+    
+
+    def __eq__(self, o):
+        return isinstance(o, type(self)) and self.start == self.end
+    
+    def __ne__(self, o):
+        return not (self.__eq__(o))
 
 
 DaySched = T.Optional[T.Tuple[TimeSpan]]
