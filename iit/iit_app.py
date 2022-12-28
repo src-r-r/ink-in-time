@@ -1,5 +1,5 @@
 import typing as T
-from flask import Flask, render_template, request, abort, Request
+from flask import Flask, render_template as flask_render_template, request, abort, Request
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, parse_qsl
 from werkzeug.serving import is_running_from_reloader
@@ -14,20 +14,38 @@ from multiprocessing import Process
 from pathlib import Path
 import logging
 
+from environ import Env
+
 from iit.tasks.task_loader import get_tasks
 from iit.cal.event import OutboundEvent, InboundEvent
+<<<<<<< HEAD
 # from .db import fetch_more_human_choices
+=======
+from iit.core.const import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
+from iit.controllers.block import find_block_options
+>>>>>>> 8e326f1 (fix some context and view issues.)
 from .email import (
     OrganizerAppointmentRequest as OAR,
     ParticipantAppointmentRequest as PAR,
 )
+from sqlalchemy import create_engine
+from jinja2 import Environment as JinjaEnv, PackageLoader, select_autoescape
+
+env = Env()
+Env.read_env(".env")
+
+jinja_env = JinjaEnv(
+    loader=PackageLoader("iit", "templates"),
+    autoescape=select_autoescape(),
+)
+
+BROKER_URL = env.url("BROKER_URL")
 
 log = logging.getLogger(__name__)
 APP_NAME = __name__
 
-TPL_BASE = Path("iit")
-IDX_TPL = TPL_BASE / "index"
-INC_TPL = TPL_BASE / "inc"
+IDX_TPL = Path("iit", "index")
+INC_TPL = Path("iit", "inc")
 INDEX_TEMPLATE = IDX_TPL / "timeblock_selection.html"
 CONFIRM_TEMPLATE = IDX_TPL / "confirmation.html"
 
@@ -38,16 +56,6 @@ MONTH_CHOICE_TPL = CHOICE_TPL_DIR / "month.html"
 DAY_CHOICE_TPL = CHOICE_TPL_DIR / "day.html"
 WEEK_CHOICE_TPL = CHOICE_TPL_DIR / "week.html"
 TIME_CHOICE_TPL = CHOICE_TPL_DIR / "time.html"
-
-
-def template_exists(tpl: Path):
-    return (Path("templates") / tpl).exists()
-
-
-def template_if_exists(tpl: Path):
-    if template_exists(tpl):
-        return str(tpl)
-    return None
 
 
 def add_error(context: T.Dict, field: T.AnyStr, code: T.AnyStr):
@@ -82,11 +90,17 @@ ICS_MIME = "text/calendar"
 
 app = Flask(__name__)
 
-# where the magic happens!
 
 from celery import Celery
 
+def render_template(pth : T.Union[Path, T.AnyStr], context=dict(), *args, **kwargs):
+    """ Adds a couple of fixes to "render_template" to make it easier.
+    """
+    if context:
+        kwargs.update({"context": context,})
+    return flask_render_template(str(pth), *args, **kwargs)
 
+# where the magic happens!
 def create_app(
     iit_config=None, config_filename=None, config_obj_path=None, project_name=None
 ):
@@ -96,44 +110,29 @@ def create_app(
 
     iit_config = iit_config or config
 
-    celery_app = Celery("inkintime", broker=config["broker_url"])
+    celery_app = Celery("inkintime", broker=BROKER_URL)
 
-    app.config.url_base = iit_config.url_base
+    app.config["url_base"] = iit_config["site"]["url_base"]
     app.debug = FLASK_DEBUG
     app.env = FLASK_ENV
 
     engine = create_engine(DB_URL)
 
-    def find_available(block: T.AnyStr, year: int, month: int, day: int):
-        ext_field = None
-        if block:
-            ext_field = "year"
-        if year:
-            ext_field = "month"
-        if month:
-            ext_field = "day"
-        if day:
-            ext_field = None
-
-        stmt = None
-        if ext_field:
-            stmt = select(
-                distinct(func.extract(ext_field, "from", "timestamp", Block.during))
-            )
-        else:
-            stmt = select(Block)
-
-        if block:
-            stmt = stmt.where(Block.name == block)
-
     if config_filename:
         app.config.from_pyfile(config_filename)
+    
+    @app.context_processor
+    def add_globals():
+        return {
+            "config": config,
+        }
 
     @app.route("/", methods=["GET"])
     def get_time_blocks():
-        return render_template(template_if_exists(BLOCK_CHOICE_TPL))
+        blocks = find_block_options()
+        return render_template(INDEX_TEMPLATE, {"blocks": blocks,})
 
-    @app.route("/<str:block>", methods=["GET"])
+    @app.route("/<block>", methods=["GET"])
     def get_year(block_name: T.AnyStr):
         context = {
             "block": block_name,
@@ -144,7 +143,7 @@ def create_app(
         }
         return render_template(template_if_exists(YEAR_CHOICE_TPL))
 
-    @app.route("/<str:block>/<int:year>", methods=["GET"])
+    @app.route("/<block>/<int:year>", methods=["GET"])
     def get_month(block_name: T.AnyStr, year: int):
         context = {
             "block": block_name,
@@ -155,7 +154,7 @@ def create_app(
         }
         return render_template(template_if_exists(MONTH_CHOICE_TPL), context)
 
-    @app.route("/<str:block>/<int:year>/<int:month>", methods=["GET"])
+    @app.route("/<block>/<int:year>/<int:month>", methods=["GET"])
     def get_day(block_name: T.AnyStr, year: int, month: int):
         context = {
             "block": block_name,
@@ -166,7 +165,7 @@ def create_app(
         }
         return render_template(template_if_exists(DAY_CHOICE_TPL), context)
 
-    @app.route("/<str:block>/<int:year>/<int:month>/<int:day>", methods=["GET", "POST"])
+    @app.route("/<block>/<int:year>/<int:month>/<int:day>", methods=["GET", "POST"])
     def pick_a_time(block_name: T.AnyStr, year: int, month: int, day: int):
         context = {
             "block": block_name,
@@ -182,3 +181,4 @@ def create_app(
         for task in get_tasks(config, ["init"]):
             task.apply_async(event=OutboundEvent.from_post_data(start))
         return render_template(template_if_exists(CONFIRM_TEMPLATE))
+    return app

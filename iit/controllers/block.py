@@ -2,11 +2,16 @@ import typing as T
 from sqlalchemy import create_engine, select, distinct
 from sqlalchemy.orm import Session
 
-from iit.db import Block
-from itt.core import TimeSpan
+from iit.models.block import Block
+from iit.types import TimeSpan
 from iit.config import config, DB_URL
 
 engine = create_engine(DB_URL)
+
+def find_block_options():
+    with Session(engine) as session:
+        blocks = session.query(Block.name).distinct().all()
+        return [b[0] for b in blocks]
 
 def find_available(*, block: T.AnyStr=None, year: int=None, month: int=None, day: int=None) -> T.Union[int, TimeSpan]:
     """Finds an avialable block based on variable granularity.

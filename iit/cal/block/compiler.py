@@ -40,7 +40,7 @@ class PostgresBlockCompiler(BlockCompilerBase):
 
     def on_range(self, start: Arrow, end: Arrow):
         name = self.duration_label
-        during = DateTimeTZRange(start.datetime, end.datetime)
+        during = DateTimeTZRange(start, end)
         block = Block(
             name=name,
             during=during,
@@ -52,12 +52,17 @@ class PostgresBlockCompiler(BlockCompilerBase):
         self.session.commit()
 
 
-class PostgresIitBlockCompiler(BlockCompilerBase):
+class PostgresIitBlockCompiler(PostgresBlockCompiler):
     def __init__(
         self,
+<<<<<<< HEAD
         weekly_schedule: "WeeklySchedule",
         start_window: T.Optional[Arrow] = None,
         end_window: T.Optional[Arrow] = None,
+=======
+        session,
+        weekly_schedule: WeeklySchedule,
+>>>>>>> 8e326f1 (fix some context and view issues.)
         *args,
         **kwargs
     ):
@@ -68,14 +73,11 @@ class PostgresIitBlockCompiler(BlockCompilerBase):
             start_window (Arrow): When to start compiling the blocks. Defaults to today if not given.
             end_window (Arrow): When to stop compiling the blocks. Optional. If not given will just pull from the calendar source.
         """
-        self.session = session
         self.weekly_schedule = weekly_schedule
-        self.start_window = start_window or now()
-        self.end_window = end_window
-        super(PostgresWorkingHoursBlockCompiler, self).__init__(*args, **kwargs)
+        super(PostgresIitBlockCompiler, self).__init__(session, *args, **kwargs)
 
     def on_range(self, start: Arrow, end: Arrow):
-        if start < self.start_window or end > self.end_window:
+        if start < self.start or end > self.end:
             log.debug(
                 "(%s, %s) outside of range (%s, %s) for block window",
                 start,
@@ -86,14 +88,15 @@ class PostgresIitBlockCompiler(BlockCompilerBase):
             return
         day_of_week = start.weekday()
         daily_hours: TimeSpan = self.weekly_schedule[day_of_week]
-        if start.time < daily_hours.start.time or end.time > daily_hours.end.time:
-            log.debug(
-                "(%s, %s) outside of range (%s, %s) for weekday %d",
-                start.time,
-                end.time,
-                daily_hours.start.time,
-                daily_hours.end.time,
-                day_of_week,
-            )
-            return
+        for span in (daily_hours or []):
+            if start.time() < span.start or end.time() > span.end:
+                log.debug(
+                    "(%s, %s) outside of range (%s, %s) for weekday %d",
+                    start.time,
+                    end.time,
+                    span.start,
+                    span.end,
+                    day_of_week,
+                )
+                return
         return super(PostgresIitBlockCompiler, self).on_range(start, end)

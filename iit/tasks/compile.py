@@ -23,9 +23,11 @@ from iit.calendar import (
 from iit.db import Block
 from iit.timespan import TimeSpan
 import logging
+
 log = logging.getLogger(__name__)
 
-app = Celery('inkintime', broker=BROKER_URL)
+app = Celery("inkintime", broker=BROKER_URL)
+
 
 @app.task
 @cached(LRUCache(1024))

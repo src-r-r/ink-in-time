@@ -14,7 +14,11 @@ from uuid import uuid4
 
 import smtplib
 
+<<<<<<< HEAD
 from .config import get_config
+=======
+from .config import config as cfg
+>>>>>>> 8e326f1 (fix some context and view issues.)
 from .core.const import (
     TPL_EML_PARTICIPANT,
     TPL_EML_ORGANIZER,

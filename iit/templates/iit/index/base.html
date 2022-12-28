@@ -31,11 +31,11 @@
     <section id="header">
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-          {% if cfg.backref_url %}
+          {% if config.site.backref.url %}
             <div class="navbar-brand">
-              <a href="{{ cfg.backref_url }}" class="btn btn-outline-light">
+              <a href="{{ config.site.backref.url }}" class="btn btn-outline-light">
                 <i class="bi bi-arrow-left"></i>
-                <span>{{ cfg.backref_label }}</span>
+                <span>{% if config.site.backref.label %}{{ config.site.backref.label }}{% else %}Back To Main Site{% endif %}</span>
               </a>
             </div>
           {% endif %}

@@ -8,6 +8,7 @@ from iit.coreutil import first_config
 from environ import Env
 
 env = Env()
+Env.read_env(".env")
 
 # Simple constants
 
