@@ -3,11 +3,12 @@ from arrow import Arrow
 from arrow import now
 from datetime import timedelta
 from iit.models.block import Block
-from iit.cal.weeklyschedule import WeeklySchedule
 from iit.timespan import TimeSpan
 from sqlalchemy.engine import Engine
 from sqlalchemy import func, select
 from psycopg2.extras import Range, DateTimeTZRange
+if T.TYPE_CHECKING:
+    from iit.cal.weeklyschedule import WeeklySchedule
 
 from iit.models.block import Session
 import logging
@@ -49,7 +50,7 @@ class PostgresBlockCompiler(BlockCompilerBase):
 class PostgresIitBlockCompiler(BlockCompilerBase):
     def __init__(
         self,
-        weekly_schedule: WeeklySchedule,
+        weekly_schedule: "WeeklySchedule",
         start_window: T.Optional[Arrow] = None,
         end_window: T.Optional[Arrow] = None,
         *args,

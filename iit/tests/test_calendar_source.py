@@ -1,5 +1,5 @@
 from sqlalchemy.engine import create_mock_engine
-from iit.cal.source import RemoteCalendarSource
+from iit.cal.source.remote import RemoteCalendarSource
 # from iit.config import config
 import arrow
 

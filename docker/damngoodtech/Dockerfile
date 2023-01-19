@@ -14,7 +14,8 @@ ENV FLASK_ENV=production
 
 WORKDIR ${PROJECT_DIR}
 COPY docker/damngoodtech/entrypoint.sh /
-COPY Pipfile Pipfile.lock ${PROJECT_DIR}
+COPY Pipfile ${PROJECT_DIR}
+COPY Pipfile.lock ${PROJECT_DIR}
 # COPY src ${PROJECT_DIR}/src
 RUN apk add --no-cache --update fish
 

@@ -1,4 +1,4 @@
-from iit.cal.source import CalendarSource
+from iit.cal.source.base import CalendarSource
 from iit.cal.event import InboundEvent
 from datetime import timedelta
 import random

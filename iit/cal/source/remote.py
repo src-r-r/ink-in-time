@@ -1,14 +1,19 @@
 import typing as T
+import arrow
 from iit.cal.event import InboundEvent
 from iit.cal.source.base import CalendarSource
 from vobject import readComponents
+import requests
+
+if T.TYPE_CHECKING:
+    from iit.cal.event import Event
 
 class RemoteCalendarSource(CalendarSource):
     def __init__(self, url):
         self.url = url
         super(CalendarSource, self).__init__()
 
-    def get_events(self) -> T.Iterator[Event]:
+    def get_events(self) -> T.Iterator['Event']:
         resp = requests.get(self.url)
         for vCalendar in readComponents(resp.text):
             for vEvent in vCalendar.getSortedChildren():

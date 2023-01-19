@@ -4,7 +4,7 @@ from sqlalchemy import select, update, column, literal, cast, func, table
 from sqlalchemy.dialects.postgresql import TSTZRANGE
 from psycopg2.extras import DateTimeTZRange
 
-from iit.cal.source import CalendarSource
+from iit.cal.source.base import CalendarSource
 from iit.cal.event import InboundEvent
 from iit.models.block import Block, Session
 
