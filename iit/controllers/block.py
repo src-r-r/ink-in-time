@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 
 from iit.models.block import Block
 from iit.types import TimeSpan
-from iit.config import config, DB_URL
+from iit.config import get_config, DB_URL
+
+config = get_config()
 
 engine = create_engine(DB_URL)
 

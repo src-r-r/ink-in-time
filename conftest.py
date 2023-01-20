@@ -12,10 +12,11 @@ import pytest
 def Session():
     from iit.models.block import Base, Session as BaseSession, engine
     Base.metadata.create_all(engine)
-    session = Session()
-    yield session
-    session.rollback()
-    session.close()
+    yield BaseSession
+    Base.metadata.drop_all(engine)
+    with BaseSession() as _session:
+        _session.rollback()
+        _session.close()
 
 
 @pytest.fixture
@@ -60,7 +61,6 @@ def client(app):
 @pytest.fixture()
 def runner(app):
     return app.test_cli_runner()
-
 
 # @pytest.fixture
 # def metadata():

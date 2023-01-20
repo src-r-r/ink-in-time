@@ -1,0 +1,9 @@
+{% extends "iit/choices.html" %}
+
+{% for month in months %}
+    <a href="/{{ block }}/{{ year }}/{{ month }}">
+        <div class="card">
+            {{ month }}
+        </div>
+    </a>
+{% endfor %}

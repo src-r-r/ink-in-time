@@ -16,8 +16,9 @@ project_name = "Ink In Time"
 LOGNAME = __name__
 
 def get_config():
-    with CONFIG_YML.open("r") as f:
+    with open(CONFIG_YML, "r") as f:
         config = load(f, Loader=Loader)
+    return config
 
 # other constant settings. I don't like it here. :-(
 

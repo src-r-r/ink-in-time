@@ -16,14 +16,11 @@ import logging
 
 from environ import Env
 
+from iit.config import get_config, DB_URL
 from iit.tasks.task_loader import get_tasks
 from iit.cal.event import OutboundEvent, InboundEvent
-<<<<<<< HEAD
-# from .db import fetch_more_human_choices
-=======
 from iit.core.const import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
 from iit.controllers.block import find_block_options
->>>>>>> 8e326f1 (fix some context and view issues.)
 from .email import (
     OrganizerAppointmentRequest as OAR,
     ParticipantAppointmentRequest as PAR,
@@ -39,18 +36,21 @@ jinja_env = JinjaEnv(
     autoescape=select_autoescape(),
 )
 
+config = get_config()
+
 BROKER_URL = env.url("BROKER_URL")
 
 log = logging.getLogger(__name__)
 APP_NAME = __name__
 
-IDX_TPL = Path("iit", "index")
-INC_TPL = Path("iit", "inc")
+TPL_NS = Path("iit")
+IDX_TPL = TPL_NS / "index"
+INC_TPL = TPL_NS / "inc"
 INDEX_TEMPLATE = IDX_TPL / "timeblock_selection.html"
 CONFIRM_TEMPLATE = IDX_TPL / "confirmation.html"
 
-CHOICE_TPL_DIR = IDX_TPL / "choice"
-BLOCK_CHOICE_TPL = CHOICE_TPL_DIR / "appointment_type.html"
+CHOICE_TPL_DIR = TPL_NS / "choice"
+BLOCK_CHOICE_TPL = CHOICE_TPL_DIR / "block.html"
 YEAR_CHOICE_TPL = CHOICE_TPL_DIR / "year.html"
 MONTH_CHOICE_TPL = CHOICE_TPL_DIR / "month.html"
 DAY_CHOICE_TPL = CHOICE_TPL_DIR / "day.html"
@@ -98,14 +98,13 @@ def render_template(pth : T.Union[Path, T.AnyStr], context=dict(), *args, **kwar
     """
     if context:
         kwargs.update({"context": context,})
+    log.debug("Rendering template %s", str(pth))
     return flask_render_template(str(pth), *args, **kwargs)
 
 # where the magic happens!
 def create_app(
     iit_config=None, config_filename=None, config_obj_path=None, project_name=None
 ):
-    from iit.config import config, DB_URL
-    from iit.core import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
 
 
     iit_config = iit_config or config
@@ -130,7 +129,7 @@ def create_app(
     @app.route("/", methods=["GET"])
     def get_time_blocks():
         blocks = find_block_options()
-        return render_template(INDEX_TEMPLATE, {"blocks": blocks,})
+        return render_template(BLOCK_CHOICE_TPL, {"blocks": blocks,})
 
     @app.route("/<block>", methods=["GET"])
     def get_year(block_name: T.AnyStr):
