@@ -15,10 +15,8 @@ from pathlib import Path
 import logging
 
 from iit.tasks.task_loader import get_tasks
-from iit.config import config, DB_URL
 from iit.cal.event import OutboundEvent, InboundEvent
-from iit.core import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
-from .db import fetch_more_human_choices
+# from .db import fetch_more_human_choices
 from .email import (
     OrganizerAppointmentRequest as OAR,
     ParticipantAppointmentRequest as PAR,
@@ -92,6 +90,9 @@ from celery import Celery
 def create_app(
     iit_config=None, config_filename=None, config_obj_path=None, project_name=None
 ):
+    from iit.config import config, DB_URL
+    from iit.core import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
+
 
     iit_config = iit_config or config
 

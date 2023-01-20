@@ -14,9 +14,8 @@ from uuid import uuid4
 
 import smtplib
 
-from .db import get_db
-from .config import config as cfg
-from .core import (
+from .config import get_config
+from .core.const import (
     TPL_EML_PARTICIPANT,
     TPL_EML_ORGANIZER,
     TPL_ICS_CAL,
@@ -30,6 +29,9 @@ log = logging.getLogger(__name__)
 
 def render_str(string: T.AnyStr, ctx=dict(), **context):
     return Template(string).render(ctx or context)
+
+
+cfg = get_config()
 
 
 class AppointmentRequestBase:

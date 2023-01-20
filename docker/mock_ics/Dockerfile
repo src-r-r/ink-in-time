@@ -1,6 +1,6 @@
 FROM node:current-alpine
 
-EXPOSE 5002
+EXPOSE 3000
 
 RUN apk add \
     --update --virtual --no-cache \

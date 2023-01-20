@@ -5,7 +5,7 @@ except ImportError:
     
 from environ import Env
 
-from .core import PACKAGE_NAME, PROJ_DIR, CONFIG_YML, TPL_DIR
+from .core.const import PACKAGE_NAME, PROJ_DIR, CONFIG_YML, TPL_DIR
 
 env = Env()
 env.read_env()
@@ -14,8 +14,9 @@ project_name = "Ink In Time"
 
 LOGNAME = __name__
 
-with CONFIG_YML.open("r") as f:
-    config = load(f, Loader=Loader)
+def get_config():
+    with CONFIG_YML.open("r") as f:
+        config = load(f, Loader=Loader)
 
 # other constant settings. I don't like it here. :-(
 

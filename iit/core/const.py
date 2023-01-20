@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-from .coreutil import first_config
+from iit.coreutil import first_config
 from environ import Env
 
 env = Env()
@@ -30,7 +30,7 @@ ROOT = Path(Path(HERE).resolve().root)
 
 ETC = ROOT / "etc"  # TODO: find windows equiv
 ETC_IIT_DIR = ETC / "ink-in-time"
-HOME_DIR = Path("~").resolve()
+HOME_DIR = Path.home().resolve()
 
 # Project-level files
 

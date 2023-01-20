@@ -19,7 +19,7 @@ services:
     container_name: redis
     restart: always
     ports:
-      - 5432:5432
+      - 8843:8843
     volumes:
       - iitredis
     networks:
@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: ./docker/mock_ics/Dockerfile
     ports:
-      - 5002:5002
+      - 5002:3000
     volumes:
       - ./docker/mock_ics/start.sh:/start.sh
   
