@@ -49,6 +49,7 @@ simple-chalk = "*"
 pipfile-requirements = "*"
 ipython = "*"
 ipdb = "*"
+pdbpp = "*"
 
 [requires]
 python_version = "3.10"

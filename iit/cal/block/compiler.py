@@ -17,6 +17,16 @@ log = logging.getLogger(__name__)
 
 class BlockCompilerBase:
     def __init__(self, start: Arrow, end: Arrow, duration: timedelta, duration_label : T.AnyStr):
+        """ Basic block compiler
+
+        :param start: Start window of the block compiler
+
+        :param end: End window of the block compiler
+
+        :param duration: Number of minutes of the block, e.g. 60
+
+        :param duration_label: Label of the appointment, e.g. "Follow-Up"
+        """
         self.start = start
         self.end = end
         self.duration = duration
@@ -35,12 +45,24 @@ class BlockCompilerBase:
 
 class PostgresBlockCompiler(BlockCompilerBase):
     def __init__(self, session, *args, **kwargs):
+        """ Compiler for a postgres database.
+
+        :param session: SqlAlchemy's session object to bind to.
+
+        :param start: Start window of the block compiler
+
+        :param end: End window of the block compiler
+
+        :param duration: Number of minutes of the block, e.g. 60
+
+        :param duration_label: Label of the appointment, e.g. "Follow-Up"
+        """
         self.session = session
         super(PostgresBlockCompiler, self).__init__(*args, **kwargs)
 
     def on_range(self, start: Arrow, end: Arrow):
         name = self.duration_label
-        during = DateTimeTZRange(start, end)
+        during = DateTimeTZRange(start.datetime, end.datetime)
         block = Block(
             name=name,
             during=during,
@@ -55,17 +77,27 @@ class PostgresBlockCompiler(BlockCompilerBase):
 class PostgresIitBlockCompiler(PostgresBlockCompiler):
     def __init__(
         self,
-<<<<<<< HEAD
+        session: Session,
         weekly_schedule: "WeeklySchedule",
         start_window: T.Optional[Arrow] = None,
         end_window: T.Optional[Arrow] = None,
-=======
-        session,
-        weekly_schedule: WeeklySchedule,
->>>>>>> 8e326f1 (fix some context and view issues.)
         *args,
         **kwargs
     ):
+        """ Compiler for a postgres database.
+
+        :param session: SqlAlchemy's session object to bind to.
+
+        :param weekly_schedule: Weekly schedule to block out certain times.
+
+        :param start: Start window of the block compiler
+
+        :param end: End window of the block compiler
+
+        :param duration: Number of minutes of the block, e.g. 60
+
+        :param duration_label: Label of the appointment, e.g. "Follow-Up"
+        """
         """A block compiler for postgres that includes details like a weekly schedule and calendar window.
 
         Args:
@@ -74,7 +106,7 @@ class PostgresIitBlockCompiler(PostgresBlockCompiler):
             end_window (Arrow): When to stop compiling the blocks. Optional. If not given will just pull from the calendar source.
         """
         self.weekly_schedule = weekly_schedule
-        super(PostgresIitBlockCompiler, self).__init__(session, *args, **kwargs)
+        super(PostgresIitBlockCompiler, self).__init__(session, start_window, end_window, *args, **kwargs)
 
     def on_range(self, start: Arrow, end: Arrow):
         if start < self.start or end > self.end:

@@ -1,5 +1,11 @@
 import typing as T
-from flask import Flask, render_template as flask_render_template, request, abort, Request
+from flask import (
+    Flask,
+    render_template as flask_render_template,
+    request,
+    abort,
+    Request,
+)
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, parse_qsl
 from werkzeug.serving import is_running_from_reloader
@@ -93,19 +99,23 @@ app = Flask(__name__)
 
 from celery import Celery
 
-def render_template(pth : T.Union[Path, T.AnyStr], context=dict(), *args, **kwargs):
-    """ Adds a couple of fixes to "render_template" to make it easier.
-    """
+
+def render_template(pth: T.Union[Path, T.AnyStr], context=dict(), *args, **kwargs):
+    """Adds a couple of fixes to "render_template" to make it easier."""
     if context:
-        kwargs.update({"context": context,})
+        kwargs.update(
+            {
+                "context": context,
+            }
+        )
     log.debug("Rendering template %s", str(pth))
     return flask_render_template(str(pth), *args, **kwargs)
+
 
 # where the magic happens!
 def create_app(
     iit_config=None, config_filename=None, config_obj_path=None, project_name=None
 ):
-
 
     iit_config = iit_config or config
 
@@ -113,13 +123,13 @@ def create_app(
 
     app.config["url_base"] = iit_config["site"]["url_base"]
     app.debug = FLASK_DEBUG
-    app.env = FLASK_ENV
+    app.debug = FLASK_ENV.lower() == "debug"
 
     engine = create_engine(DB_URL)
 
     if config_filename:
         app.config.from_pyfile(config_filename)
-    
+
     @app.context_processor
     def add_globals():
         return {
@@ -129,16 +139,23 @@ def create_app(
     @app.route("/", methods=["GET"])
     def get_time_blocks():
         blocks = find_block_options()
-        return render_template(BLOCK_CHOICE_TPL, {"blocks": blocks,})
+        import pdb; pdb.set_trace()
+        return render_template(
+            BLOCK_CHOICE_TPL,
+            {
+                "block_choices": blocks,
+            },
+        )
 
     @app.route("/<block>", methods=["GET"])
     def get_year(block_name: T.AnyStr):
+        block_choices: find_available(block_name, None, None, None)
         context = {
             "block": block_name,
             "year": None,
             "month": None,
             "day": None,
-            "choices": find_available(block_name, None, None, None),
+            "choices": block_choices,
         }
         return render_template(template_if_exists(YEAR_CHOICE_TPL))
 
@@ -176,8 +193,9 @@ def create_app(
         if request.method == "GET":
             return render_template(TIME_CHOICE_TPL, context)
         # if POST...
-        
+
         for task in get_tasks(config, ["init"]):
             task.apply_async(event=OutboundEvent.from_post_data(start))
         return render_template(template_if_exists(CONFIRM_TEMPLATE))
+
     return app

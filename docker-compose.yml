@@ -1,3 +1,4 @@
+version: "3.0"
 services:
   
   # Debugging
@@ -21,7 +22,7 @@ services:
     ports:
       - 8843:8843
     volumes:
-      - iitredis
+      - ./_data/redis:/data
     networks:
       - iit
   
@@ -61,7 +62,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - iitdb
+      - ./_data/db:/var/lib/postgresql
     networks:
       - iit
     environment:

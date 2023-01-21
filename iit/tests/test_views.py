@@ -8,8 +8,8 @@ import arrow
 def brew(resp : Response):
     return BeautifulSoup(resp.text)
 
-def test_index(Session, client):
+def test_index(remote_compiled_calendar, db_session, client):
     resp = client.get('/')
     assert resp.status_code == 200
     soup = brew(resp)
-    import ipdb; ipdb.set_trace()
+    assert "Full Consultation" in resp.text

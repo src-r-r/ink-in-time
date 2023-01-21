@@ -1,10 +1,10 @@
 {% extends "iit/choices.html" %}
 
 {% block choices %}
-{% for block in blocks %}
-    <a href="/{{ block }}">
+{% for block_choice in block_choices %}
+    <a href="/{{ block_choice }}">
         <div class="card">
-            {{ block }}
+            {{ block_choice }}
         </div>
     </a>
 {% endfor %}

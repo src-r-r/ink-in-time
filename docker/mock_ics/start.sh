@@ -1,2 +1,2 @@
 #!/bin/sh
-node /app/mocking/ics.js
+npm run ics

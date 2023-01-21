@@ -6,7 +6,6 @@ from iit.models.block import Block
 from iit.types import TimeSpan
 from iit.config import get_config, DB_URL
 
-config = get_config()
 
 engine = create_engine(DB_URL)
 
@@ -15,7 +14,7 @@ def find_block_options():
         blocks = session.query(Block.name).distinct().all()
         return [b[0] for b in blocks]
 
-def find_available(*, block: T.AnyStr=None, year: int=None, month: int=None, day: int=None) -> T.Union[int, TimeSpan]:
+def find_available(*, block: T.AnyStr=None, year: int=None, month: int=None, day: int=None, config=get_config()) -> T.Union[int, TimeSpan]:
     """Finds an avialable block based on variable granularity.
     
     If given a year, will return the months. If given a year and month, will return days.

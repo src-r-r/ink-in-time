@@ -4,6 +4,6 @@ from iit.cal.source.remote import RemoteCalendarSource
 import arrow
 
 def test_calendar_compiler():
-    TEST_URL = "http://localhost:5002/ics/maybe-their.ics/"
+    TEST_URL = "http://localhost:5002/test.ics"
     source = RemoteCalendarSource(TEST_URL)
     assert len([e for e in source.get_events()])
