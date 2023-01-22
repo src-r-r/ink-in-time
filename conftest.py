@@ -8,6 +8,7 @@ from iit.mock.cal.source import StaticMockCalendarSource
 from iit.cal.block.compiler import PostgresIitBlockCompiler
 from iit.cal.compiler import PostgresCalendarCompiler
 from iit.models.block import Base, Session as BaseSession, engine
+from iit.iit_app import create_app
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import (
@@ -22,7 +23,7 @@ import arrow
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def test_config():
     return {
         "scheduling": {
@@ -39,65 +40,68 @@ def test_config():
         },
     }
 
-
-@pytest.fixture
+@pytest.fixture(scope="module")
 def weekly_schedule(test_config):
     return get_workweek(test_config)
 
-
-@pytest.fixture(scope="session")
-def db_engine(request):
-    """yields a SQLAlchemy engine which is suppressed after the test session"""
-    # db_url = request.config.getoption("--dburl")
-    engine_ = create_engine(DB_URL, echo=True)
-
-    yield engine_
-
-    engine_.dispose()
-
-
-@pytest.fixture(scope="session")
-def db_session_factory(db_engine):
-    """returns a SQLAlchemy scoped session factory"""
-    return scoped_session(sessionmaker(bind=db_engine))
-
-
-@pytest.fixture(scope="function")
-def db_session(db_session_factory):
-    """yields a SQLAlchemy connection which is rollbacked after the test"""
-    session_ = db_session_factory()
-
-    yield session_
-
-    session_.rollback()
-    session_.close()
-
-
-@pytest.fixture
-def remote_compiled_calendar(db_session, weekly_schedule):
+@pytest.fixture(scope="module")
+def block_compiler(weekly_schedule):
     lower = arrow.now()
     upper = arrow.now().shift(months=1)
     duration = timedelta(minutes=60)
     block_compiler = PostgresIitBlockCompiler(
-        db_session,
         weekly_schedule,
         lower,
         upper,
         duration,
         "Full Consultation",
     )
-    block_compiler.compile()
-    source = RemoteCalendarSource("http://127.0.0.1:5002/test.ics")
-    calendar_compiler = PostgresCalendarCompiler(
-        source,
+    return block_compiler
+
+@pytest.fixture(scope="module")
+def calendar_source():
+    return RemoteCalendarSource("http://127.0.0.1:5002/test.ics")
+
+@pytest.fixture(scope="module")
+def calendar_compiler(calendar_source):
+    return PostgresCalendarCompiler(
+        calendar_source,
     )
-    calendar_compiler.compile()
-    return None
+
+
+@pytest.fixture(scope="module")
+def db_engine(request):
+    """yields a SQLAlchemy engine which is suppressed after the test session"""
+    # db_url = request.config.getoption("--dburl")
+    engine_ = create_engine(DB_URL, echo=True)
+    Base.metadata.create_all(engine_)
+
+    yield engine_
+
+    engine_.dispose()
+
+
+@pytest.fixture(scope="module")
+def db_session_factory(db_engine):
+    """returns a SQLAlchemy scoped session factory"""
+    return scoped_session(sessionmaker(bind=db_engine))
+
+
+@pytest.fixture(scope="module")
+def db_session(db_session_factory):
+    """yields a SQLAlchemy connection which is rollbacked after the test"""
+    session_ = db_session_factory()
+    
+    yield session_
+
+    session_.rollback()
+    session_.close()
+
+
 
 
 @pytest.fixture()
-def app(test_config):
-    from iit.iit_app import create_app
+def app(db_session, test_config, weekly_schedule):
 
     app = create_app(iit_config=test_config)
     app.config.update(

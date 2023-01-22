@@ -1,9 +1,11 @@
 {% extends "iit/choices.html" %}
 
-{% for year in years %}
-    <a href="/{{ block }}/{{ year }}">
+{% block choices %}
+{% for year in year_choices %}
+    <a href="/{{ block_choice }}/{{ year }}">
         <div class="year">
             {{ year }}
         </div>
     </a>
 {% endfor %}
+{% endblock %}

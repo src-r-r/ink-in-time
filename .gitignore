@@ -11,3 +11,5 @@ package-lock.json
 db
 .env
 _data
+.venv
+.pytest_cache

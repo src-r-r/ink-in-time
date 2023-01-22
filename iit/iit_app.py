@@ -20,13 +20,18 @@ from multiprocessing import Process
 from pathlib import Path
 import logging
 
+
+from celery import Celery
 from environ import Env
+
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy as SQLAlchemyExtension
 
 from iit.config import get_config, DB_URL
 from iit.tasks.task_loader import get_tasks
 from iit.cal.event import OutboundEvent, InboundEvent
 from iit.core.const import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
-from iit.controllers.block import find_block_options
+from iit.controllers.block import find_block_options, find_available
 from .email import (
     OrganizerAppointmentRequest as OAR,
     ParticipantAppointmentRequest as PAR,
@@ -94,21 +99,12 @@ def extract_tz(req: Request):
 
 ICS_MIME = "text/calendar"
 
-app = Flask(__name__)
+APP_NAME = __name__
 
 
-from celery import Celery
-
-
-def render_template(pth: T.Union[Path, T.AnyStr], context=dict(), *args, **kwargs):
+def render_template(pth: T.Union[Path, T.AnyStr], *args, **kwargs):
     """Adds a couple of fixes to "render_template" to make it easier."""
-    if context:
-        kwargs.update(
-            {
-                "context": context,
-            }
-        )
-    log.debug("Rendering template %s", str(pth))
+    log.debug("Rendering template %s with kwargs=%s", str(pth), kwargs)
     return flask_render_template(str(pth), *args, **kwargs)
 
 
@@ -120,6 +116,8 @@ def create_app(
     iit_config = iit_config or config
 
     celery_app = Celery("inkintime", broker=BROKER_URL)
+
+    app = Flask(APP_NAME)
 
     app.config["url_base"] = iit_config["site"]["url_base"]
     app.debug = FLASK_DEBUG
@@ -139,25 +137,15 @@ def create_app(
     @app.route("/", methods=["GET"])
     def get_time_blocks():
         blocks = find_block_options()
-        import pdb; pdb.set_trace()
         return render_template(
             BLOCK_CHOICE_TPL,
-            {
-                "block_choices": blocks,
-            },
+            block_choices=blocks,
         )
 
     @app.route("/<block>", methods=["GET"])
-    def get_year(block_name: T.AnyStr):
-        block_choices: find_available(block_name, None, None, None)
-        context = {
-            "block": block_name,
-            "year": None,
-            "month": None,
-            "day": None,
-            "choices": block_choices,
-        }
-        return render_template(template_if_exists(YEAR_CHOICE_TPL))
+    def get_year(block: T.AnyStr):
+        year_choices = find_available(block=block)
+        return render_template(YEAR_CHOICE_TPL, block_choice=block, year_choices=year_choices)
 
     @app.route("/<block>/<int:year>", methods=["GET"])
     def get_month(block_name: T.AnyStr, year: int):
