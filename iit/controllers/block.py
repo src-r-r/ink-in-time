@@ -8,16 +8,28 @@ from iit.models.block import Block
 from iit.types import TimeSpan
 from iit.config import get_config, DB_URL
 
+import arrow
+
 engine = create_engine(DB_URL)
+
 
 def find_block_options():
     with Session(engine) as session:
         blocks = session.query(Block.name).distinct().all()
         return [b[0] for b in blocks]
 
-def find_available(session, *, block: T.AnyStr=None, year: int=None, month: int=None, day: int=None, config=get_config()) -> T.Union[int, TimeSpan]:
+
+def find_available(
+    session,
+    *,
+    block: T.AnyStr = None,
+    year: int = None,
+    month: int = None,
+    day: int = None,
+    config=get_config()
+) -> T.Union[int, TimeSpan]:
     """Finds an avialable block based on variable granularity.
-    
+
     If given a year, will return the months. If given a year and month, will return days.
 
     Args:
@@ -29,13 +41,12 @@ def find_available(session, *, block: T.AnyStr=None, year: int=None, month: int=
     Returns:
         T.Union[int, TimeSpan]: _description_
     """
-    from iit.models.block import Block
-    
+
     # if not block:
-        # return config["scheduling"]["appointments"]
+    # return config["scheduling"]["appointments"]
 
     ext_field = None
-    
+
     if block:
         ext_field = "year"
     if year:
@@ -46,15 +57,28 @@ def find_available(session, *, block: T.AnyStr=None, year: int=None, month: int=
         ext_field = None
 
     if ext_field:
-        query_args = distinct(func.extract(ext_field, func.lower(cast(column("during"), TSTZRANGE))))
+        selection = select(
+            distinct(
+                func.extract(ext_field, func.lower(cast(Block.during, TSTZRANGE)))
+            ).label(ext_field)
+        )
+        _nofield_selection = select(func.lower(Block.during))
     else:
-        query_args = distinct(Block.name)
+        selection = select(
+            distinct(Block.name),
+            func.age(
+                func.upper(cast(Block.during, TSTZRANGE())),
+                func.lower(cast(Block.during, TSTZRANGE())),
+            ).label("duration"),
+        )
+        _nofield_selection = select(Block.name)
 
-    stmt = session.query(query_args)
-    
     if block:
-        selection = stmt.filter(Block.name==block)
-    
-    session.query()
-    
-    return [s[0] for s in stmt.all()]
+        # TODO: the clean up should have removed old blocks.
+        selection = selection.where(Block.name == block)
+        _nofield_selection = _nofield_selection.where(Block.name == block)
+
+    data = session.execute(selection).all()
+    _data2 = session.execute(_nofield_selection).scalars()
+
+    return sorted(data)

@@ -1,0 +1,11 @@
+
+{% for week in day_choices|batch(7, '&nbsp;') %}
+<div class="row py-2 {% if loop.index == week %}text-muted{% endif %}">
+    {% with weeknum=loop.index %}
+        {% include "iit/inc/week_row_header.html" %}
+        {% for day_choice in week %}
+            {% include "iit/inc/day_block.html" %}
+        {% endfor %}
+    {% endwith %}
+</div>
+{% endfor %}

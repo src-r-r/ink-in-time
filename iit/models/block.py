@@ -21,6 +21,8 @@ Base = declarative_base()
 
 log = logging.getLogger(__name__)
 
+from .database import db
+
 @declarative_mixin
 class Model:
     id = Column(Integer, primary_key=True)
@@ -28,7 +30,7 @@ class Model:
     def __tablename__(self):
         return type(self).__name__.lower()
 
-class Block(Model, Base):
+class Block(Model, db.Model):
     name = Column(String(512))
     during = Column(TSTZRANGE())
     is_unavailable = Column(Boolean, nullable=True)

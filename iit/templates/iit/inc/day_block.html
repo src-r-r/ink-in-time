@@ -1,0 +1,14 @@
+
+<div class="col text-center">
+    {% if day_choice.enabled or weeknum == request.args.week %}
+        <a href="/{{ block }}/{{ year }}/{{ month }}/{{ day_choice.dom }}/?timezone={{ timezone }}" class="card p-4 text-lg">
+    {% else %}
+        <div class="card text-muted p-4">
+    {% endif %}
+            {{ day_choice.dom }}
+    {% if day_choice.enabled %}
+        </a>
+    {% else %}
+    </div>
+    {% endif %}
+</div>

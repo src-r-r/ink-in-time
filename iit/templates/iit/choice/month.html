@@ -1,9 +1,14 @@
 {% extends "iit/choices.html" %}
 
-{% for month in months %}
-    <a href="/{{ block }}/{{ year }}/{{ month }}">
+{% block choices %}
+
+{% for month_i in month_choices %}
+    <a href="/{{ block }}/{{ year }}/{{ month_i }}?timezone={{timezone}}">
         <div class="card">
-            {{ month }}
+            <h1>{{ month_i }}</h1>
+            <h2>{{ month_i|month_name }}</h2>
         </div>
     </a>
 {% endfor %}
+
+{% endblock %}

@@ -9,11 +9,12 @@ from sqlalchemy import func, select
 from psycopg2.extras import Range, DateTimeTZRange
 if T.TYPE_CHECKING:
     from iit.cal.weeklyschedule import WeeklySchedule
-
+import chalk
 from iit.models.block import Session
 import logging
 log = logging.getLogger(__name__)
 
+DT_FORMAT="%Y-%m-%d, %H:%M %p"
 
 class BlockCompilerBase:
     def __init__(self, start: Arrow, end: Arrow, duration: timedelta, duration_label : T.AnyStr):
@@ -36,11 +37,14 @@ class BlockCompilerBase:
         raise NotImplementedError()
 
     def compile(self, session):
+        log.debug(chalk.underline("Starting at %s"), self.start.strftime(DT_FORMAT))
         curr_start = self.start
         while curr_start + self.duration < self.end:
             curr_end = curr_start + self.duration
+            log.debug(chalk.blue("curr_start=%s"), curr_start.strftime(DT_FORMAT))
             self.on_range(session, curr_start, curr_end)
             curr_start = curr_end
+        log.debug(chalk.underline("Ending at %s"), self.end.strftime(DT_FORMAT))
 
 
 class PostgresBlockCompiler(BlockCompilerBase):
@@ -60,13 +64,13 @@ class PostgresBlockCompiler(BlockCompilerBase):
     def on_range(self, session : Session, start: Arrow, end: Arrow):
         name = self.duration_label
         during = DateTimeTZRange(start.datetime, end.datetime)
+        if session.query(Block).filter_by(name=name, during=during).count():
+            # log.debug("%s already exists, doing nothing", block)
+            return
         block = Block(
             name=name,
             during=during,
         )
-        if session.query(Block).filter_by(name=name, during=during).count():
-            log.debug("%s already exists, doing nothing", block)
-            return
         session.add(block)
         session.commit()
 
@@ -104,25 +108,25 @@ class PostgresIitBlockCompiler(PostgresBlockCompiler):
 
     def on_range(self, session : Session, start: Arrow, end: Arrow):
         if start < self.start or end > self.end:
-            log.debug(
-                "(%s, %s) outside of range (%s, %s) for block window",
-                start,
-                end,
-                self.start_window,
-                self.end_window,
-            )
+            # log.debug(
+            #     "(%s, %s) outside of range (%s, %s) for block window",
+            #     start,
+            #     end,
+            #     self.start_window,
+            #     self.end_window,
+            # )
             return
         day_of_week = start.weekday()
         daily_hours: TimeSpan = self.weekly_schedule[day_of_week]
         for span in (daily_hours or []):
             if start.time() < span.start or end.time() > span.end:
-                log.debug(
-                    "(%s, %s) outside of range (%s, %s) for weekday %d",
-                    start.time,
-                    end.time,
-                    span.start,
-                    span.end,
-                    day_of_week,
-                )
+                # log.debug(
+                #     "(%s, %s) outside of range (%s, %s) for weekday %d",
+                #     start.time,
+                #     end.time,
+                #     span.start,
+                #     span.end,
+                #     day_of_week,
+                # )
                 return
         return super(PostgresIitBlockCompiler, self).on_range(session, start, end)

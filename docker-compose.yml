@@ -36,22 +36,22 @@ services:
     volumes:
       - ./docker/mock_ics/start.sh:/start.sh
   
-  debugiit:
-    build:
-      context: .
-      dockerfile: ./docker/damngoodtech/Dockerfile
-    ports:
-      - "5000:5000"
-    links:
-      - redis
-      - mockics
-      - smtpdebug
-    depends_on:
-      - mockics
-      - smtpdebug
-    # entrypoint: /entrypoint.sh
-    volumes:
-      - ./config/iit-debug.yml:/app/iit.yml
+  # debugiit:
+  #   build:
+  #     context: .
+  #     dockerfile: ./docker/damngoodtech/Dockerfile
+  #   ports:
+  #     - "5000:5000"
+  #   links:
+  #     - redis
+  #     - mockics
+  #     - smtpdebug
+  #   depends_on:
+  #     - mockics
+  #     - smtpdebug
+  #   # entrypoint: /entrypoint.sh
+  #   volumes:
+  #     - ./config/iit-debug.yml:/app/iit.yml
   
   # database
   
@@ -70,17 +70,17 @@ services:
       - "POSTGRES_DB=${POSTGRES_DB:-iitdev}"
 
     
-  # No debugging
-  iit:
-    build:
-      context: .
-      dockerfile: ./docker/damngoodtech/Dockerfile
-    ports:
-      - "5000:5000"
-    entrypoint: /entrypoint.sh
-    volumes:
-      - ./config/iit.yml:/app/iit.yml
-      - ./docker/mock_ics/start.sh:/start.sh
+  # # No debugging
+  # iit:
+  #   build:
+  #     context: .
+  #     dockerfile: ./docker/damngoodtech/Dockerfile
+  #   ports:
+  #     - "5000:5000"
+  #   entrypoint: /entrypoint.sh
+  #   volumes:
+  #     - ./config/iit.yml:/app/iit.yml
+  #     - ./docker/mock_ics/start.sh:/start.sh
   
   etebase:
     image: victorrds/etesync:slim

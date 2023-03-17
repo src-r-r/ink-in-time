@@ -1,15 +1,6 @@
-.iit-dropdown {
+.iit-dropdown ul {
     height: 400px;
     overflow-y: scroll;
-}
-
-.iit-dropdown li {
-    display: block;
-}
-
-.iit-dropdown li a {
-    text-decoration: none;
-    color: black;
 }
 
 .required {

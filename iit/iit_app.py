@@ -6,6 +6,7 @@ from flask import (
     abort,
     Request,
 )
+from urllib.parse import quote_plus, unquote_plus
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, parse_qsl
 from werkzeug.serving import is_running_from_reloader
@@ -16,6 +17,7 @@ from calendar import month_name as MN
 import pytz
 import celery
 import arrow
+import calendar
 from multiprocessing import Process
 from pathlib import Path
 import logging
@@ -24,10 +26,11 @@ import logging
 from celery import Celery
 from environ import Env
 
-from flask import Flask
+from flask import Flask, request, g
 from flask_sqlalchemy import SQLAlchemy as SQLAlchemyExtension
 
 from iit.config import get_config, DB_URL
+from iit.models.database import db
 from iit.tasks.task_loader import get_tasks
 from iit.cal.event import OutboundEvent, InboundEvent
 from iit.core.const import MOCK_ICS_DIR, FLASK_DEBUG, FLASK_ENV
@@ -36,6 +39,7 @@ from .email import (
     OrganizerAppointmentRequest as OAR,
     ParticipantAppointmentRequest as PAR,
 )
+from calendar import Calendar as PyCal
 from sqlalchemy import create_engine
 from jinja2 import Environment as JinjaEnv, PackageLoader, select_autoescape
 
@@ -68,6 +72,8 @@ DAY_CHOICE_TPL = CHOICE_TPL_DIR / "day.html"
 WEEK_CHOICE_TPL = CHOICE_TPL_DIR / "week.html"
 TIME_CHOICE_TPL = CHOICE_TPL_DIR / "time.html"
 
+CHOICE_DT_FORMAT = "%H:%M %p - %H:%M %p, %Z"
+
 
 def add_error(context: T.Dict, field: T.AnyStr, code: T.AnyStr):
     errors = context.get("errors", {})
@@ -86,15 +92,11 @@ def add_error(context: T.Dict, field: T.AnyStr, code: T.AnyStr):
 
 def extract_tz(req: Request):
     timezones = [{"value": tz, "label": tz} for tz in pytz.all_timezones]
-    qs = parse_qs(req.query_string)
-    timezone = qs.get(b"timezone", str(config.my_timezone))
-    if isinstance(timezone, list):
-        timezone = timezone[0].decode("ascii")
-    log.debug("timezone = %s", timezone)
-    if timezone and (timezone not in pytz.all_timezones):
-        log.error("Invalid timezone %s", timezone)
-        raise ValueError("Invalid Timezone")
-    return (timezone, pytz.timezone(timezone))
+    arg_timezone = request.args.get("timezone")
+    if arg_timezone:
+        arg_timezone = unquote_plus(arg_timezone)
+    my_timezone = config.get("scheduling", {}).get("my_timezone", None)
+    return arg_timezone or my_timezone or "UTC"
 
 
 ICS_MIME = "text/calendar"
@@ -104,13 +106,33 @@ APP_NAME = __name__
 
 def render_template(pth: T.Union[Path, T.AnyStr], *args, **kwargs):
     """Adds a couple of fixes to "render_template" to make it easier."""
-    log.debug("Rendering template %s with kwargs=%s", str(pth), kwargs)
+    # log.debug("Rendering template %s with kwargs=%s", str(pth), kwargs)
     return flask_render_template(str(pth), *args, **kwargs)
+
+
+def group_to(lst: T.Iterable, sz: int):
+    return [lst[n : n + sz] for n in range(0, len(lst), sz)]
+
+
+def time_choice_value(tzrange: T.Tuple[datetime]):
+    (start, end) = tzrange
+    duration = (end - start).minutes
+    return f"{start.toordinal()},{end.toordinal()},{duration}"
+
+
+def time_choice_label(tzrange: T.Tuple[datetime]):
+    (start, end) = tzrange
+    duration = (end - start).minutes
+    return f"{start.toordinal()},{end.toordinal()},{duration}"
 
 
 # where the magic happens!
 def create_app(
-    iit_config=None, config_filename=None, config_obj_path=None, project_name=None
+    iit_config=None,
+    config_filename=None,
+    config_obj_path=None,
+    project_name=None,
+    db_url=DB_URL,
 ):
 
     iit_config = iit_config or config
@@ -118,6 +140,24 @@ def create_app(
     celery_app = Celery("inkintime", broker=BROKER_URL)
 
     app = Flask(APP_NAME)
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+
+    # Add custom filters to the jinja environment
+    app.jinja_env.filters["month_name"] = calendar.month_name.__getitem__
+    app.jinja_env.filters["day_name"] = calendar.day_name.__getitem__
+    app.jinja_env.filters["enumerate"] = lambda x: enumerate(x)
+
+    # app.jinja.env.filters["now_year"] = lambda x : datetime().now().year
+    # app.jinja.env.filters["now_month"] = lambda x : datetime().now().month
+    # app.jinja.env.filters["now_day"] = lambda x : datetime().now().day
+
+    db.init_app(app)
+
+    with app.app_context():
+        from iit.models.block import Block
+
+        db.create_all()
+        db.session.commit()
 
     app.config["url_base"] = iit_config["site"]["url_base"]
     app.debug = FLASK_DEBUG
@@ -132,58 +172,99 @@ def create_app(
     def add_globals():
         return {
             "config": config,
+            "all_timezones": [
+                {"value": quote_plus(tz), "label": tz.replace("_", " ")}
+                for tz in pytz.all_timezones
+            ],
         }
 
     @app.route("/", methods=["GET"])
     def get_time_blocks():
-        blocks = find_block_options()
+        blocks = find_available(db.session)
         return render_template(
-            BLOCK_CHOICE_TPL,
-            block_choices=blocks,
+            BLOCK_CHOICE_TPL, block_choices=blocks, timezone=extract_tz(request)
         )
 
     @app.route("/<block>", methods=["GET"])
     def get_year(block: T.AnyStr):
-        year_choices = find_available(block=block)
-        return render_template(YEAR_CHOICE_TPL, block_choice=block, year_choices=year_choices)
+        year_choices = find_available(db.session, block=block)
+        year_choices = [int(y[0]) for y in year_choices]
+        return render_template(
+            YEAR_CHOICE_TPL,
+            block_choice=block,
+            year_choices=year_choices,
+            timezone=extract_tz(request),
+        )
 
     @app.route("/<block>/<int:year>", methods=["GET"])
-    def get_month(block_name: T.AnyStr, year: int):
+    def get_month(block: T.AnyStr, year: int):
+        avail = find_available(db.session, block=block, year=year)
         context = {
-            "block": block_name,
+            "block": block,
             "year": year,
-            "month": None,
-            "day": None,
-            "choices": find_available(block_name, year, None, None),
+            "month_choices": [int(i[0]) for i in avail],
+            "timezone": extract_tz(request),
         }
-        return render_template(template_if_exists(MONTH_CHOICE_TPL), context)
+        return render_template(MONTH_CHOICE_TPL, **context)
 
     @app.route("/<block>/<int:year>/<int:month>", methods=["GET"])
-    def get_day(block_name: T.AnyStr, year: int, month: int):
+    def get_day(block: T.AnyStr, year: int, month: int):
+        q = request.args.to_dict()
+        week = q.get("week", None)
+        current_dom = datetime.now().day
+        days_of_month = [
+            int(i[0])
+            for i in find_available(db.session, block=block, year=year, month=month)
+        ]
+        pycal = PyCal()
+        caldays = [d for d in pycal.itermonthdays4(year, month)]
+        day_choices = [
+            {
+                "dom": dom,
+                "dow": dow,
+                "enabled": dom in days_of_month and dom >= current_dom,
+                "today": dom == current_dom,
+            }
+            for (year, month, dom, dow) in caldays
+        ]
+        n_weeks = int(len(caldays) / 7)
+        week_choices = [i for i in range(1, n_weeks + 1)]
+        try:
+            if week:
+                week = int(week)
+                if week not in week_choices:
+                    raise ValueError()
+        except ValueError as ve:
+            raise ValueError(
+                f"Invalid week: {week}, must be a week number {week_choices}"
+            )
         context = {
-            "block": block_name,
+            "block": block,
             "year": year,
             "month": month,
-            "day": None,
-            "choices": find_available(block_name, year, month, None),
+            "day_choices": day_choices,
+            "timezone": extract_tz(request),
         }
-        return render_template(template_if_exists(DAY_CHOICE_TPL), context)
+        return render_template(DAY_CHOICE_TPL, **context)
 
     @app.route("/<block>/<int:year>/<int:month>/<int:day>", methods=["GET", "POST"])
-    def pick_a_time(block_name: T.AnyStr, year: int, month: int, day: int):
+    def pick_a_time(block: T.AnyStr, year: int, month: int, day: int):
         context = {
-            "block": block_name,
+            "block": block,
             "year": year,
             "month": month,
             "day": day,
-            "choices": find_available(block_name, year, month, day),
+            "time_choices": find_available(
+                db.session, block=block, year=year, month=month, day=day
+            ),
+            "timezone": extract_tz(request),
         }
         if request.method == "GET":
-            return render_template(TIME_CHOICE_TPL, context)
+            return render_template(TIME_CHOICE_TPL, **context)
         # if POST...
 
         for task in get_tasks(config, ["init"]):
             task.apply_async(event=OutboundEvent.from_post_data(start))
-        return render_template(template_if_exists(CONFIRM_TEMPLATE))
+        return render_template(CONFIRM_TEMPLATE)
 
     return app

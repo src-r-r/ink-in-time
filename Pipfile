@@ -44,12 +44,14 @@ sqlalchemy-migrate = "*"
 etebase = "*"
 dateparser = "*"
 simple-chalk = "*"
+blinker = "*"
 
 [dev-packages]
 pipfile-requirements = "*"
 ipython = "*"
 ipdb = "*"
 pdbpp = "*"
+pychalk = "*"
 
 [requires]
 python_version = "3.10"

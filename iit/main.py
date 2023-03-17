@@ -5,13 +5,14 @@ import jinja2
 import logging.config
 import logging
 import pytz
-from .config import config
-from .iit_app import create_app
+from iit.config import get_config
+from iit.iit_app import create_app
 
 log = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
-    logging.config.dictConfig(config.LOGGING)
+    config = get_config()
+    logging.config.dictConfig(config["logging"])
     app = create_app()
     app.run(debug=True)

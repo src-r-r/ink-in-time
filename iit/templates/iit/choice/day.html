@@ -1,0 +1,18 @@
+{% extends "iit/choices.html" %}
+
+{% block choices %}
+<div class="container">
+<div class="row py-4">
+    <div class="col col m-0 p-0">
+        {# Empty for week number #}
+    </div>
+    {% for dow in "Mon|Tue|Wed|Thu|Fri|Sat|Sun".split("|") %}
+    <div class="col col text-center text-large text-strong">
+        {{ dow }}
+    </div>
+    {% endfor %}
+</div>
+{% include "iit/inc/week_rows.html" %}
+</div>
+
+{% endblock %}

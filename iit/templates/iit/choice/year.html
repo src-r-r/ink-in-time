@@ -2,7 +2,7 @@
 
 {% block choices %}
 {% for year in year_choices %}
-    <a href="/{{ block_choice }}/{{ year }}">
+    <a href="/{{ block_choice }}/{{ year }}?timezone={{ timezone }}">
         <div class="year">
             {{ year }}
         </div>

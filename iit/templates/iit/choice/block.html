@@ -2,9 +2,10 @@
 
 {% block choices %}
 {% for block_choice in block_choices %}
-    <a href="/{{ block_choice }}">
+    <a href="/{{ block_choice._no_label }}?timezone={{timezone}}">
         <div class="card">
-            {{ block_choice }}
+            <h1>{{ block_choice._no_label }}</h1>
+            <h2>{{ block_choice.duration.seconds / 60 }} Minutes</h2>
         </div>
     </a>
 {% endfor %}

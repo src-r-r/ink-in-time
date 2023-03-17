@@ -1,0 +1,14 @@
+{% extends "iit/choices.html" %}
+
+{% block choices %}
+
+<form method="POST" action="/{{ block }}/{{ year }}/{{ month }}/{{ day_choice.day }}">
+    <select>
+    {% for time_choice in time_choices %}
+        <option value="{{ time_choice.value }}">{{ time_choice.label }}</option>
+    {% endfor %}
+    </select>
+    <input type="submit" value="Schedule" class="btn btn-primary btn-large" />
+</form>
+
+{% endblock %}

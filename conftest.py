@@ -6,6 +6,7 @@ from iit.core.workweek import get_workweek
 from iit.cal.source.remote import RemoteCalendarSource
 from iit.mock.cal.source import StaticMockCalendarSource
 from iit.cal.block.compiler import PostgresIitBlockCompiler
+from iit.cal.block.cleanup import PostgresBlockCleanup
 from iit.cal.compiler import PostgresCalendarCompiler
 from iit.models.block import Base, Session as BaseSession, engine
 from iit.iit_app import create_app
@@ -68,6 +69,9 @@ def calendar_compiler(calendar_source):
         calendar_source,
     )
 
+@pytest.fixture(scope="module")
+def block_cleanup():
+    return PostgresBlockCleanup(arrow.now())
 
 @pytest.fixture(scope="module")
 def db_engine(request):
@@ -97,9 +101,6 @@ def db_session(db_session_factory):
     session_.rollback()
     session_.close()
 
-
-
-
 @pytest.fixture()
 def app(db_session, test_config, weekly_schedule):
 
@@ -112,6 +113,11 @@ def app(db_session, test_config, weekly_schedule):
 
     yield app
 
+
+@pytest.fixture
+def app_ctx(app):
+    with app.app_context():
+        yield
 
 @pytest.fixture()
 def client(app):
