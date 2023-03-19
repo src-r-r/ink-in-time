@@ -140,6 +140,7 @@ def create_app(
     celery_app = Celery("inkintime", broker=BROKER_URL)
 
     app = Flask(APP_NAME)
+    app.url_map.strict_slashes = False
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 
     # Add custom filters to the jinja environment
@@ -253,7 +254,7 @@ def create_app(
             "block": block,
             "year": year,
             "month": month,
-            "day": day,
+            "day_choice": day,
             "time_choices": find_available(
                 db.session, block=block, year=year, month=month, day=day
             ),

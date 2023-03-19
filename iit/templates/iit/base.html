@@ -11,7 +11,7 @@
       rel="stylesheet"
       />
     <script
-      src="{{config.url_base}}{{url_for('static', filename='jquery/jquery-3.6.0.slim.min.js')}}"
+      src="{{config.url_base}}{{url_for('static', filename='jquery/jquery-3.6.0.min.js')}}"
     ></script>
 
     <!-- Bootstrap CSS -->
@@ -72,7 +72,17 @@
       crossorigin="anonymous"
     ></script>
     <script
+      src="{{config.url_base}}{{url_for('static', filename='iit/js/dist.js')}}"
+      type="module"
+    ></script>
+    <script
+      id="iit-data-timezones"
+      src="{{config.url_base}}{{url_for('static', filename='data/timezones.json')}}"
+      type="text/json"
+    ></script>
+    <script
       src="{{config.url_base}}{{url_for('static', filename='iit/js/index.js')}}"
+      type="module"
     ></script>
 
     <!-- Option 2: Separate Popper and Bootstrap JS -->

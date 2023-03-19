@@ -12,24 +12,14 @@
         data-bs-toggle="dropdown"
         aria-expanded="true"
       >
-        {% if timezone %}{{ timezone.label }}{% else %}Select Timezone{% endif
+        {% if timezone %}{{ timezone }}{% else %}Select Timezone{% endif
         %}
       </a>
       <div class="iit-dropdown dropdown-menu">
         <div class="mb-3">
           <input type="text" id="timezone-filter" class="form-control" />
         </div>
-        <ul>
-          {% for tz in timezones %}
-          <li>
-            <a
-              href="{{cfg.url_base}}{{ request.path }}?timezone={{ tz.value }}"
-              iit-data-value="{{ tz.value }}"
-            >
-              {{ tz.label }}
-            </a>
-          </li>
-          {% endfor %}
+        <ul id="iit-timezone-filter-list" iit-data-base-url="{{config.url_base}}{{ request.path }}">
         </ul>
       </div>
     </div>
