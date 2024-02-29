@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 -m smtpd -c DebuggingServer -n 0.0.0.0:1025
+python3 -m aiosmtpd -n -l 0.0.0.0:1025
